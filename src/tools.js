@@ -11,7 +11,7 @@ const load = (f) => JSON.parse(readFileSync(path.join(__dir, "..", "data", f), "
 const MENU = load("menu.json");
 
 // In-memory state (per process). Keyed by sessionId where relevant.
-const state = { bookings: [], leads: [], orders: {}, ticketSeq: 240, folioSeq: 5000 };
+const state = { bookings: [], leads: [], orders: {}, completedOrders: [], ticketSeq: 240, folioSeq: 5000 };
 
 export const money = (n) => "$" + Number(n).toLocaleString("en-US") + " USD";
 const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -140,6 +140,7 @@ export function create_order(args = {}, sessionId = "default") {
     items: order.items, total: order.total,
   };
   delete state.orders[sessionId];
+  state.completedOrders.push({ ...ticket, at: Date.now() });
   return { ok: true, ...ticket };
 }
 
