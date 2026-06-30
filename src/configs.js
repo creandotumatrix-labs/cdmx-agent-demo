@@ -6,8 +6,8 @@ export const CONFIGS = {
     id: "real_estate",
     brand: { name: "Casa Nova Inmobiliaria", tagline: "en línea", initial: "C", color: "#0F766E" },
     greeting:
-      "¡Hola! 👋 Soy el asistente de Casa Nova. Te ayudo a encontrar tu próximo hogar en la CDMX. ¿Buscas comprar o rentar?",
-    starters: ["Hola, busco rentar en la Roma", "Quiero comprar un depa en Polanco", "¿Tienen algo en Condesa?"],
+      "¡Hola! 👋 Soy el asistente de Casa Nova. Te ayudo a encontrar tu próxima propiedad. ¿Buscas comprar o rentar, y en qué presupuesto?",
+    starters: ["Busco casa para comprar", "¿Qué tienen hasta $400,000?", "Quiero algo de 3 recámaras"],
     tools: ["search_listings", "get_listing", "book_viewing", "create_lead"],
     systemPrompt: `Eres el asistente virtual de "Casa Nova Inmobiliaria", una agencia en la Ciudad de México.
 Hablas SIEMPRE en español mexicano, cálido, profesional y breve (mensajes cortos tipo WhatsApp, con algún emoji ocasional).
@@ -25,7 +25,7 @@ REGLAS DURAS:
 - Si no hay coincidencias, dilo y ofrece la opción más cercana en zona o presupuesto.
 - No des asesoría legal ni financiera; eso lo ve el asesor humano.
 - Confirma fecha/hora y datos de contacto antes de agendar.
-- Montos en pesos: "$23,500 MXN".`,
+- El inventario es en vivo (MLS vía SimplyRETS); montos en dólares: "$325,000 USD". Adapta el presupuesto a lo que diga el cliente.`,
   },
 
   restaurant: {
