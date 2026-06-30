@@ -12,6 +12,7 @@ import { mockRespond } from "./src/mockAgent.js";
 import { runAgent, LLM } from "./src/llm.js";
 import { _state, dataSource } from "./src/tools.js";
 import * as store from "./src/store.js";
+import { sendWhatsApp } from "./src/integrations.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -54,6 +55,20 @@ async function respond(config, session, text) {
 const send = (res, code, obj) => { res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(obj)); };
 const body = (req) => new Promise((r) => { let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => r(d ? JSON.parse(d) : {})); });
 
+// Inbound WhatsApp message → run the same agent → reply via the Graph API.
+// Real WhatsApp number when WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID are set; otherwise no-op.
+async function handleWhatsApp(payload) {
+  try {
+    const value = payload && payload.entry && payload.entry[0] && payload.entry[0].changes && payload.entry[0].changes[0] && payload.entry[0].changes[0].value;
+    const msg = value && value.messages && value.messages[0];
+    if (!msg || msg.type !== "text") return; // ignore delivery/read statuses and non-text
+    const from = msg.from;
+    const text = (msg.text && msg.text.body) || "";
+    const out = await respond(withLang(CONFIGS[DEFAULT_VERTICAL], "es"), getSession("wa-" + from, DEFAULT_VERTICAL), text);
+    await sendWhatsApp(from, out.reply || "…");
+  } catch (e) { console.error("[whatsapp inbound]", e.message); }
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
@@ -71,6 +86,23 @@ const server = http.createServer(async (req, res) => {
       const out = await respond(config, getSession(sessionId, vertical), text);
       persist();
       return send(res, 200, out);
+    }
+    // WhatsApp Cloud API webhook — verification handshake
+    if (req.method === "GET" && url.pathname === "/webhook") {
+      const mode = url.searchParams.get("hub.mode");
+      const token = url.searchParams.get("hub.verify_token");
+      const challenge = url.searchParams.get("hub.challenge");
+      if (mode === "subscribe" && token && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+        res.writeHead(200, { "Content-Type": "text/plain" }); return res.end(challenge || "");
+      }
+      res.writeHead(403); return res.end("forbidden");
+    }
+    // WhatsApp Cloud API webhook — inbound messages (ack fast, then process)
+    if (req.method === "POST" && url.pathname === "/webhook") {
+      const payload = await body(req);
+      send(res, 200, { received: true });
+      handleWhatsApp(payload);
+      return;
     }
     if (req.method === "POST" && url.pathname === "/api/reset") {
       const { sessionId = "default" } = await body(req); sessions.delete(sessionId); return send(res, 200, { ok: true });
