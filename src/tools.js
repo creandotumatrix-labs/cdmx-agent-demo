@@ -4,6 +4,7 @@
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
+import * as store from "./store.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const load = (f) => JSON.parse(readFileSync(path.join(__dir, "..", "data", f), "utf8"));
@@ -81,6 +82,7 @@ export function book_viewing(args = {}) {
   const folio = "VIS-" + ++state.folioSeq;
   const b = { folio, listing_id: listing.id, colonia: listing.colonia, fecha: args.fecha, hora: args.hora, nombre: args.nombre || null, telefono: args.telefono || null };
   state.bookings.push(b);
+  store.saveBooking(b);
   return { ok: true, ...b };
 }
 
@@ -98,6 +100,7 @@ export function create_lead(args = {}) {
     score: args.score || "calificado",
   };
   state.leads.push(lead);
+  store.saveLead(lead);
   return { ok: true, ...lead };
 }
 
@@ -140,7 +143,9 @@ export function create_order(args = {}, sessionId = "default") {
     items: order.items, total: order.total,
   };
   delete state.orders[sessionId];
-  state.completedOrders.push({ ...ticket, at: Date.now() });
+  const record = { ...ticket, at: Date.now() };
+  state.completedOrders.push(record);
+  store.saveOrder(record);
   return { ok: true, ...ticket };
 }
 
