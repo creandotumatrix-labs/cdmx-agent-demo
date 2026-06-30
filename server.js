@@ -58,7 +58,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
     if (req.method === "GET" && url.pathname === "/") {
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(readFileSync(path.join(__dir, "public", "index.html"), "utf8"));
     }
     if (req.method === "GET" && url.pathname === "/api/config") {
@@ -82,7 +82,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource(), store: store.storeMode() });
     }
     if (req.method === "GET" && url.pathname === "/dashboard") {
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(readFileSync(path.join(__dir, "public", "dashboard.html"), "utf8"));
     }
     if (req.method === "GET" && url.pathname === "/api/dashboard") {
