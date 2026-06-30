@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>CDMX Agent — Asistente de WhatsApp</title>
+<title>CDMX Agent — WhatsApp Assistant</title>
 <style>
   :root { --brand:#0F766E; --bg:#0b141a; }
   * { box-sizing:border-box; }
@@ -14,7 +14,8 @@
   .seg { display:flex; background:#0c171d; border:1px solid #2a3942; border-radius:999px; padding:4px; }
   .seg button { border:0; background:transparent; color:#aebac1; padding:8px 16px; border-radius:999px; cursor:pointer; font-size:14px; font-weight:600; }
   .seg button.active { background:var(--brand); color:#fff; }
-  .ghost { background:#0c171d; color:#aebac1; border:1px solid #2a3942; border-radius:999px; padding:9px 16px; cursor:pointer; font-weight:600; font-size:14px; }
+  .seg.lang button { padding:8px 13px; }
+  .ghost { background:#0c171d; color:#aebac1; border:1px solid #2a3942; border-radius:999px; padding:9px 16px; cursor:pointer; font-weight:600; font-size:14px; text-decoration:none; }
   .badge { font-size:11px; font-weight:700; letter-spacing:.5px; padding:4px 9px; border-radius:999px; }
   .badge.mock { background:#3a2a00; color:#ffcc66; } .badge.live { background:#06351f; color:#5cffa6; } .badge.err { background:#3a0e0e; color:#ff8a8a; }
 
@@ -59,7 +60,7 @@
   .panel h3 { margin:0 0 4px; } .panel .muted{color:#8696a0;font-size:13px;margin-bottom:12px}
   .lead { border:1px solid #2a3942; border-radius:10px; padding:10px; margin:8px 0; font-size:13.5px; }
   .lead b{color:#7ee2c1}
-  .foot { color:#7b8b93; font-size:12px; text-align:center; }
+  .foot { color:#7b8b93; font-size:12px; text-align:center; max-width:440px; }
 </style>
 </head>
 <body>
@@ -68,8 +69,12 @@
       <button data-v="real_estate" class="active">🏡 Inmobiliaria</button>
       <button data-v="restaurant">🌮 Restaurante</button>
     </div>
+    <div class="seg lang" id="langSeg">
+      <button data-lang="es" class="active">ES</button>
+      <button data-lang="en">EN</button>
+    </div>
     <button class="ghost" id="handoffBtn">📋 Vista del asesor</button>
-    <a class="ghost" href="/dashboard" target="_blank" style="text-decoration:none">📊 Panel</a>
+    <a class="ghost" id="panelLink" href="/dashboard" target="_blank">📊 Panel</a>
     <span class="badge mock" id="modeBadge">MOCK</span>
     <span id="srcTag" style="font-size:11px;color:#8aa9b8;font-weight:600"></span>
   </div>
@@ -88,23 +93,92 @@
       <button id="send">➤</button>
     </div>
   </div>
-  <div class="foot">Agente de WhatsApp para PYMES · un mismo motor, distintos giros · acciones reales con cada cliente</div>
+  <div class="foot" id="foot">Agente de WhatsApp para PYMES · un mismo motor, distintos giros · acciones reales con cada cliente</div>
 
   <div class="panel" id="panel"><div class="inner">
-    <h3>Vista del asesor — leads y visitas</h3>
-    <div class="muted">Lo que el agente entregó automáticamente al humano.</div>
+    <h3 id="panelTitle">Vista del asesor — leads y visitas</h3>
+    <div class="muted" id="panelMuted">Lo que el agente entregó automáticamente al humano.</div>
     <div id="handoffBody"></div>
-    <button class="ghost" style="margin-top:10px" onclick="document.getElementById('panel').classList.remove('open')">Cerrar</button>
+    <button class="ghost" id="panelClose" style="margin-top:10px">Cerrar</button>
   </div></div>
 
 <script>
 const sessionId = "s-" + Math.random().toString(36).slice(2);
 let vertical = "real_estate";
+let lang = "es";
 const $ = (id) => document.getElementById(id);
-const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
 const md = (s) => esc(s).replace(/\*(.+?)\*/g,"<b>$1</b>").replace(/_(.+?)_/g,"<i>$1</i>").replace(/\n/g,"<br>");
-const now = () => new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+const now = () => new Date().toLocaleTimeString(lang==="en"?"en-US":"es-MX",{hour:"2-digit",minute:"2-digit"});
 
+// ---------------- i18n ----------------
+const T = {
+  es: {
+    segReal:"🏡 Inmobiliaria", segRest:"🌮 Restaurante",
+    handoff:"📋 Vista del asesor", panelLink:"📊 Panel",
+    placeholder:"Escribe un mensaje",
+    foot:"Agente de WhatsApp para PYMES · un mismo motor, distintos giros · acciones reales con cada cliente",
+    panelTitle:"Vista del asesor — leads y visitas",
+    panelMuted:"Lo que el agente entregó automáticamente al humano.",
+    close:"Cerrar", online:"en línea",
+    noLeads:"Aún no hay leads. Completa una conversación primero.",
+    invPrefix:"Inventario:", viewing:"Visita", property:"propiedad",
+    recAbbr:"rec", bathAbbr:"baños", bookN:(n)=>`Agendar la ${n}`, bookMsg:(n)=>`quiero agendar la ${n}`,
+    ticketHead:(f)=>`🧾 Ticket ${f} · cocina`, total:"Total",
+    badge:{live:"LIVE",demo:"DEMO",nomodel:"SIN MODELO"},
+    greeting:{
+      real_estate:"¡Hola! 👋 Soy el asistente de Casa Nova. Te ayudo a encontrar tu próxima propiedad. ¿Buscas comprar o rentar, y en qué presupuesto?",
+      restaurant:"¡Qué tal! 🌮 Bienvenido a Taquería El Agave. ¿Te paso el menú o me dices directo qué se te antoja?"
+    },
+    starters:{
+      real_estate:["Busco casa para comprar","¿Qué tienen hasta $8 millones?","Quiero algo de 3 recámaras"],
+      restaurant:["Quiero pedir para llevar","¿Me pasas el menú?","3 tacos de pastor y una horchata"]
+    }
+  },
+  en: {
+    segReal:"🏡 Real estate", segRest:"🌮 Restaurant",
+    handoff:"📋 Advisor view", panelLink:"📊 Dashboard",
+    placeholder:"Type a message",
+    foot:"WhatsApp agent for SMBs · one engine, many businesses · real actions on every chat",
+    panelTitle:"Advisor view — leads & viewings",
+    panelMuted:"What the agent handed off to the human, automatically.",
+    close:"Close", online:"online",
+    noLeads:"No leads yet. Complete a conversation first.",
+    invPrefix:"Inventory:", viewing:"Viewing", property:"property",
+    recAbbr:"bd", bathAbbr:"ba", bookN:(n)=>`Book #${n}`, bookMsg:(n)=>`I want to book listing ${n}`,
+    ticketHead:(f)=>`🧾 Ticket ${f} · kitchen`, total:"Total",
+    badge:{live:"LIVE",demo:"DEMO",nomodel:"NO MODEL"},
+    greeting:{
+      real_estate:"Hi! 👋 I'm the Casa Nova assistant. I'll help you find your next home. Are you looking to buy or rent, and what's your budget?",
+      restaurant:"Hey! 🌮 Welcome to Taquería El Agave. Want to see the menu, or just tell me what you're craving?"
+    },
+    starters:{
+      real_estate:["I'm looking to buy a home","What do you have under $8M MXN?","I want a 3-bedroom"],
+      restaurant:["I'd like takeout","Can I see the menu?","3 pastor tacos and a horchata"]
+    }
+  }
+};
+const t = (k) => T[lang][k];
+const fmtMoney = (n, moneda) => "$" + Number(n).toLocaleString(moneda==="USD"?"en-US":"es-MX") + " " + (moneda||"MXN");
+
+let lastSource = null;
+function applyChrome(){
+  document.documentElement.lang = lang;
+  $("seg").querySelector('[data-v=real_estate]').textContent = t("segReal");
+  $("seg").querySelector('[data-v=restaurant]').textContent = t("segRest");
+  $("handoffBtn").textContent = t("handoff");
+  $("panelLink").textContent = t("panelLink");
+  $("input").placeholder = t("placeholder");
+  $("foot").textContent = t("foot");
+  $("panelTitle").textContent = t("panelTitle");
+  $("panelMuted").textContent = t("panelMuted");
+  $("panelClose").textContent = t("close");
+  $("brandTag").textContent = t("online");
+  $("srcTag").textContent = lastSource ? (t("invPrefix") + " " + lastSource) : "";
+  [...$("langSeg").children].forEach(b=>b.classList.toggle("active", b.dataset.lang===lang));
+}
+
+// ---------------- rendering ----------------
 function bubble(text, side) {
   const row = document.createElement("div"); row.className = "row " + (side==="out"?"out":"in");
   row.innerHTML = `<div class="bubble">${md(text)}<span class="t">${now()}</span></div>`;
@@ -112,20 +186,21 @@ function bubble(text, side) {
 }
 function gradFor(id){
   const g=["linear-gradient(135deg,#0e3a34,#155e54)","linear-gradient(135deg,#3a2a0e,#6b4f15)","linear-gradient(135deg,#2a0e3a,#4f1560)","linear-gradient(135deg,#0e2a3a,#155060)"];
-  let h=0; for(const ch of id) h=(h*31+ch.charCodeAt(0))>>>0; return g[h%g.length];
+  let h=0; for(const ch of String(id)) h=(h*31+ch.charCodeAt(0))>>>0; return g[h%g.length];
 }
 function listingCards(listings){
   for(const l of listings){
+    const price = fmtMoney(l.precio, l.moneda);
     const row=document.createElement("div"); row.className="row in";
     row.innerHTML=`<div class="card"><div class="thumb" style="background:${gradFor(l.id)}">`+
       `<img src="${l.foto}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`+
-      `<span class="cap">🏡 ${l.colonia} · $${l.precio.toLocaleString("en-US")} USD</span></div>`+
-      `<div class="body"><b>${l.colonia}</b> · ${l.recamaras} rec · ${l.banos} baños · ${l.m2} ft²<br>`+
-      `<span class="price">$${l.precio.toLocaleString("en-US")} USD</span><br>`+
-      `<span style="opacity:.7">${l.id} — ${l.descripcion}</span></div></div>`;
+      `<span class="cap">🏡 ${esc(l.colonia)} · ${price}</span></div>`+
+      `<div class="body"><b>${esc(l.colonia)}</b> · ${l.recamaras} ${t("recAbbr")} · ${l.banos} ${t("bathAbbr")} · ${l.m2} m²<br>`+
+      `<span class="price">${price}</span><br>`+
+      `<span style="opacity:.7">${esc(l.id)} — ${esc(l.descripcion)}</span></div></div>`;
     $("chat").appendChild(row);
   }
-  quickRow(listings.map((l,i)=>({label:`Agendar la ${i+1}`, msg:`quiero agendar la ${i+1}`})));
+  quickRow(listings.map((l,i)=>({label:t("bookN")(i+1), msg:t("bookMsg")(i+1)})));
   scroll();
 }
 function quickRow(opts){
@@ -137,8 +212,8 @@ function quickRow(opts){
 }
 function ticketCard(tk){
   const row=document.createElement("div"); row.className="row in";
-  const items=tk.items.map(i=>`• ${i.qty} ${i.nombre} — $${(i.precio*i.qty).toLocaleString("es-MX")}`).join("<br>");
-  row.innerHTML=`<div class="ticket"><h4>🧾 Ticket ${tk.folio} · cocina</h4>${items}<br><b>Total: $${tk.total.toLocaleString("es-MX")} MXN</b><br><span style="opacity:.7">${tk.tipo}${tk.hora?" · "+tk.hora:""}</span></div>`;
+  const items=tk.items.map(i=>`• ${i.qty} ${esc(i.nombre)} — $${(i.precio*i.qty).toLocaleString("es-MX")}`).join("<br>");
+  row.innerHTML=`<div class="ticket"><h4>${t("ticketHead")(esc(tk.folio))}</h4>${items}<br><b>${t("total")}: $${tk.total.toLocaleString("es-MX")} MXN</b><br><span style="opacity:.7">${esc(tk.tipo||"")}${tk.hora?" · "+esc(tk.hora):""}</span></div>`;
   $("chat").appendChild(row); scroll();
 }
 function typing(on){
@@ -150,23 +225,25 @@ function typing(on){
 }
 const scroll = () => { const c=$("chat"); c.scrollTop=c.scrollHeight; };
 
+// ---------------- data flow ----------------
 async function loadConfig(){
   const r=await fetch("/api/config?v="+vertical); const c=await r.json();
   document.documentElement.style.setProperty("--brand", c.brand.color);
-  $("avatar").textContent=c.brand.initial; $("brandName").textContent=c.brand.name; $("brandTag").textContent=c.brand.tagline;
-  const bt={live:"LIVE",demo:"DEMO",nomodel:"SIN MODELO"}[c.mode]||c.mode.toUpperCase();
+  $("avatar").textContent=c.brand.initial; $("brandName").textContent=c.brand.name;
+  const bt=t("badge")[c.mode]||c.mode.toUpperCase();
   const bc={live:"live",demo:"mock",nomodel:"err"}[c.mode]||"mock";
   $("modeBadge").textContent=bt; $("modeBadge").className="badge "+bc;
-  $("srcTag").textContent = c.source ? ("· Inventario: " + c.source) : "";
-  $("chat").innerHTML=""; bubble(c.greeting,"in");
-  $("starters").innerHTML=""; c.starters.forEach(s=>{ const b=document.createElement("button"); b.textContent=s; b.onclick=()=>sendText(s); $("starters").appendChild(b); });
+  lastSource = c.source || null;
+  applyChrome();
+  $("chat").innerHTML=""; bubble(t("greeting")[vertical],"in");
+  $("starters").innerHTML=""; t("starters")[vertical].forEach(s=>{ const b=document.createElement("button"); b.textContent=s; b.onclick=()=>sendText(s); $("starters").appendChild(b); });
 }
 async function sendText(text){
   if(!text.trim())return; $("starters").innerHTML=""; bubble(text,"out"); $("input").value=""; typing(true);
   try{
-    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId,vertical,text})});
+    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId,vertical,text,lang})});
     const d=await r.json(); typing(false);
-    if(d._fallback){ $("modeBadge").textContent="DEMO"; $("modeBadge").className="badge mock"; }
+    if(d._fallback){ $("modeBadge").textContent=t("badge").demo; $("modeBadge").className="badge mock"; }
     bubble(d.reply,"in");
     if(d.listings&&d.listings.length) listingCards(d.listings);
     if(d.ticket) ticketCard(d.ticket);
@@ -177,19 +254,28 @@ async function swap(v){
   await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId})});
   loadConfig();
 }
+async function setLang(l){
+  if(l===lang) return;
+  lang=l;
+  await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId})});
+  loadConfig();
+}
 async function showHandoff(){
   const r=await fetch("/api/handoff"); const d=await r.json();
   let h="";
-  if(!d.leads.length&&!d.bookings.length) h='<div class="muted">Aún no hay leads. Completa una conversación primero.</div>';
-  d.leads.forEach(l=>{ h+=`<div class="lead"><b>${l.nombre||"—"}</b> · ${l.telefono||"—"}<br>${l.operacion||""} ${l.colonia||""} ${l.presupuesto?("· $"+l.presupuesto.toLocaleString("es-MX")):""} ${l.recamaras?("· "+l.recamaras+" rec"):""}<br><span style="opacity:.7">${l.id} · propiedad ${l.listing_id||"—"} · ${l.score}</span></div>`; });
-  d.bookings.forEach(b=>{ h+=`<div class="lead">🗓️ Visita <b>${b.folio}</b> · ${b.colonia} · ${b.fecha||""} ${b.hora||""}<br><span style="opacity:.7">${b.nombre||""} ${b.telefono||""}</span></div>`; });
+  if(!d.leads.length&&!d.bookings.length) h=`<div class="muted">${t("noLeads")}</div>`;
+  d.leads.forEach(l=>{ h+=`<div class="lead"><b>${esc(l.nombre||"—")}</b> · ${esc(l.telefono||"—")}<br>${esc(l.operacion||"")} ${esc(l.colonia||"")} ${l.presupuesto?("· "+fmtMoney(l.presupuesto,l.moneda||"MXN")):""} ${l.recamaras?("· "+l.recamaras+" "+t("recAbbr")):""}<br><span style="opacity:.7">${esc(l.id)} · ${t("property")} ${esc(l.listing_id||"—")} · ${esc(l.score||"")}</span></div>`; });
+  d.bookings.forEach(b=>{ h+=`<div class="lead">🗓️ ${t("viewing")} <b>${esc(b.folio)}</b> · ${esc(b.colonia)} · ${esc(b.fecha||"")} ${esc(b.hora||"")}<br><span style="opacity:.7">${esc(b.nombre||"")} ${esc(b.telefono||"")}</span></div>`; });
   $("handoffBody").innerHTML=h; $("panel").classList.add("open");
 }
 
 $("send").onclick=()=>sendText($("input").value);
 $("input").addEventListener("keydown",e=>{ if(e.key==="Enter") sendText($("input").value); });
 $("seg").addEventListener("click",e=>{ if(e.target.dataset.v) swap(e.target.dataset.v); });
+$("langSeg").addEventListener("click",e=>{ if(e.target.dataset.lang) setLang(e.target.dataset.lang); });
 $("handoffBtn").onclick=showHandoff;
+$("panelClose").onclick=()=>$("panel").classList.remove("open");
+applyChrome();
 loadConfig();
 </script>
 </body>
