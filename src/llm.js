@@ -139,7 +139,18 @@ async function runViaCli(config, session, userText) {
 export const LLM = process.env.LLM || "claude-cli";
 export async function runAgent(config, session, userText) {
   session._actions = [];
-  if (LLM === "api") return runViaApi(config, session, userText);
-  return runViaCli(config, session, userText);
+  const out = (LLM === "api") ? await runViaApi(config, session, userText) : await runViaCli(config, session, userText);
+  return decorate(out);
+}
+// The UI renders cards from top-level `listings` (property photos + "Agendar" buttons)
+// and `ticket` (kitchen ticket). Both adapters return { reply, actions[] }, so lift the
+// structured tool results from this turn's actions up to the response root.
+function decorate(out) {
+  const acts = (out && out.actions) || [];
+  const lastSearch = [...acts].reverse().find((a) => a.tool === "search_listings" && a.result && Array.isArray(a.result.listings));
+  if (lastSearch && lastSearch.result.listings.length) out.listings = lastSearch.result.listings;
+  const lastOrder = [...acts].reverse().find((a) => a.tool === "create_order" && a.result && a.result.ok);
+  if (lastOrder) out.ticket = lastOrder.result;
+  return out;
 }
 export { execTool };
