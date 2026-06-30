@@ -1,5 +1,5 @@
 node_modules/
-data/_handoff.json
+_handoff.json
 *.log
 .DS_Store
 .env

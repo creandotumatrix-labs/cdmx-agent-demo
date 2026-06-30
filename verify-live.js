@@ -2,8 +2,8 @@
 // conversation through the live model and prints replies + the tools it fired.
 //   node verify-live.js                          # uses your Max via `claude -p`
 //   LLM=api ANTHROPIC_API_KEY=sk-... node verify-live.js
-import { CONFIGS } from "./src/configs.js";
-import { runAgent, LLM } from "./src/llm.js";
+import { CONFIGS } from "./configs.js";
+import { runAgent, LLM } from "./llm.js";
 
 const turns = [
   "Hola, vi un anuncio, busco rentar en la Roma",

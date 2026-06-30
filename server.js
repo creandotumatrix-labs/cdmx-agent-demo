@@ -6,10 +6,10 @@ import http from "http";
 import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
-import { CONFIGS, DEFAULT_VERTICAL } from "./src/configs.js";
-import { mockRespond } from "./src/mockAgent.js";
-import { runAgent, LLM } from "./src/llm.js";
-import { _state } from "./src/tools.js";
+import { CONFIGS, DEFAULT_VERTICAL } from "./configs.js";
+import { mockRespond } from "./mockAgent.js";
+import { runAgent, LLM } from "./llm.js";
+import { _state } from "./tools.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -22,7 +22,7 @@ function getSession(id, vertical) {
   return s;
 }
 function persist() {
-  try { writeFileSync(path.join(__dir, "data", "_handoff.json"), JSON.stringify({ leads: _state.leads, bookings: _state.bookings }, null, 2)); } catch {}
+  try { writeFileSync(path.join(__dir, "_handoff.json"), JSON.stringify({ leads: _state.leads, bookings: _state.bookings }, null, 2)); } catch {}
 }
 async function respond(config, session, text) {
   if (LLM === "offline") return mockRespond(config, session, text);
@@ -38,7 +38,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      return res.end(readFileSync(path.join(__dir, "public", "index.html"), "utf8"));
+      return res.end(readFileSync(path.join(__dir, "index.html"), "utf8"));
     }
     if (req.method === "GET" && url.pathname === "/api/config") {
       const c = CONFIGS[url.searchParams.get("v") || DEFAULT_VERTICAL] || CONFIGS[DEFAULT_VERTICAL];

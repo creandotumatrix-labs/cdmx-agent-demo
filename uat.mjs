@@ -68,7 +68,7 @@ srv.kill();
 
 // ---------------- 2) In-process — tools, guardrails, model adapter ----------------
 section("3) Tool guardrails (direct)");
-const tools = await import("./src/tools.js");
+const tools = await import("./tools.js");
 const sold = tools.add_to_order({ items: [{ id: "churros", qty: 1 }] }, "uat-86");
 check("86'd item (churros, disponible:false) is refused", sold.added?.[0]?.ok === false && sold.order.items.length === 0);
 const venta = tools.search_listings({ op: "venta", colonia: "Polanco" });
@@ -88,8 +88,8 @@ globalThis.fetch = async (url, opts) => {
   const sawResult = JSON.stringify(b.messages).includes("tool_result");
   return { json: async () => ({ _sawResult: sawResult, content: [{ type: "text", text: sawResult ? "Tengo 2 opciones en Roma Norte 👇" : "NO_RESULT" }] }) };
 };
-const { runAgent } = await import("./src/llm.js");
-const { CONFIGS } = await import("./src/configs.js");
+const { runAgent } = await import("./llm.js");
+const { CONFIGS } = await import("./configs.js");
 const apiRes = await runAgent(CONFIGS.real_estate, { id: "uat-api", vertical: "real_estate", history: [] }, "rentar en la Roma, 25 mil, 2 recamaras");
 check("adapter executes the native tool call", apiRes.actions?.some((a) => a.tool === "search_listings"));
 check("tool returned grounded listings to the model", apiRes.actions?.[0]?.result?.count >= 1);
