@@ -3,6 +3,7 @@
 //   LLM=api ANTHROPIC_API_KEY=...   → real agent via Anthropic API (or OPENROUTER_API_KEY)
 //   LLM=offline node server.js      → deterministic fallback (no model)
 import http from "http";
+import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -14,7 +15,13 @@ import { _state } from "./src/tools.js";
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const sessions = new Map();
-const uiMode = LLM === "offline" ? "offline" : "live";
+// Badge honesty: only claim "live" if a model is actually reachable.
+function liveUsable() {
+  if (LLM === "offline") return false;
+  if (LLM === "api") return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY);
+  try { execSync("command -v claude", { stdio: "ignore" }); return true; } catch { return false; }
+}
+const uiMode = liveUsable() ? "live" : "demo";
 
 function getSession(id, vertical) {
   let s = sessions.get(id);
@@ -62,8 +69,9 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  CDMX Agent Demo  ·  LLM: ${LLM}${uiMode === "offline" ? " (no model)" : ""}`);
+  console.log(`\n  CDMX Agent Demo  ·  LLM: ${LLM}  ·  badge: ${uiMode.toUpperCase()}`);
   console.log(`  ▶  http://localhost:${PORT}\n`);
-  if (LLM === "claude-cli") console.log("  Using your Max plan via `claude -p`. Make sure `claude` works in your terminal.\n");
-  if (LLM === "api") console.log(`  Using ${process.env.OPENROUTER_API_KEY ? "OpenRouter" : "Anthropic API"}. Model: ${process.env.MODEL || "default"}.\n`);
+  if (uiMode === "demo") console.log("  No model reachable — running the deterministic DEMO agent (badge shows DEMO).\n  For the real agent: have `claude` on PATH (LLM=claude-cli), or set LLM=api with a key.\n");
+  else if (LLM === "claude-cli") console.log("  Live on your Max plan via `claude -p`.\n");
+  else console.log(`  Live via ${process.env.OPENROUTER_API_KEY ? "OpenRouter" : "Anthropic API"}. Model: ${process.env.MODEL || "default"}.\n`);
 });

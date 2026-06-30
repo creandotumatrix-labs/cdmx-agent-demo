@@ -3,13 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "White-label WhatsApp-style agent demo (CDMX) — real estate + restaurant on one runtime.",
+  "description": "White-label WhatsApp-style agent demo (CDMX): real estate + restaurant on one runtime. Zero runtime dependencies.",
   "scripts": {
     "start": "node server.js",
-    "live": "MODE=live node server.js"
-  },
-  "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "latest",
-    "zod": "^3.23.8"
+    "live": "LLM=api node server.js",
+    "test": "node uat.mjs",
+    "smoke": "node _test_llm.mjs",
+    "verify": "node verify-live.js"
   }
 }
