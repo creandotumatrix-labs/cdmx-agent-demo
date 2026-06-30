@@ -5,6 +5,7 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 import * as store from "./store.js";
+import * as integrations from "./integrations.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const load = (f) => JSON.parse(readFileSync(path.join(__dir, "..", "data", f), "utf8"));
@@ -99,6 +100,7 @@ export function book_viewing(args = {}) {
   const b = { folio, listing_id: listing.id, colonia: listing.colonia, fecha: args.fecha, hora: args.hora, nombre: args.nombre || null, telefono: args.telefono || null };
   state.bookings.push(b);
   store.saveBooking(b);
+  integrations.createCalendarEvent(b);   // gated: real Google Calendar event if configured
   return { ok: true, ...b };
 }
 
@@ -117,6 +119,7 @@ export function create_lead(args = {}) {
   };
   state.leads.push(lead);
   store.saveLead(lead);
+  integrations.pushLeadToHubSpot(lead);   // gated: real HubSpot contact if configured
   return { ok: true, ...lead };
 }
 
