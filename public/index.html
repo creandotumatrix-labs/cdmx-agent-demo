@@ -70,6 +70,7 @@
     </div>
     <button class="ghost" id="handoffBtn">📋 Vista del asesor</button>
     <span class="badge mock" id="modeBadge">MOCK</span>
+    <span id="srcTag" style="font-size:11px;color:#8aa9b8;font-weight:600"></span>
   </div>
 
   <div class="phone">
@@ -117,9 +118,9 @@ function listingCards(listings){
     const row=document.createElement("div"); row.className="row in";
     row.innerHTML=`<div class="card"><div class="thumb" style="background:${gradFor(l.id)}">`+
       `<img src="${l.foto}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/>`+
-      `<span class="cap">🏡 ${l.colonia} · $${l.precio.toLocaleString("es-MX")}${l.op==="renta"?"/mes":""}</span></div>`+
-      `<div class="body"><b>${l.colonia}</b> · ${l.recamaras} rec · ${l.banos} baños · ${l.m2} m²<br>`+
-      `<span class="price">$${l.precio.toLocaleString("es-MX")} MXN${l.op==="renta"?" / mes":""}</span><br>`+
+      `<span class="cap">🏡 ${l.colonia} · $${l.precio.toLocaleString("en-US")} USD</span></div>`+
+      `<div class="body"><b>${l.colonia}</b> · ${l.recamaras} rec · ${l.banos} baños · ${l.m2} ft²<br>`+
+      `<span class="price">$${l.precio.toLocaleString("en-US")} USD</span><br>`+
       `<span style="opacity:.7">${l.id} — ${l.descripcion}</span></div></div>`;
     $("chat").appendChild(row);
   }
@@ -155,6 +156,7 @@ async function loadConfig(){
   const bt={live:"LIVE",demo:"DEMO",nomodel:"SIN MODELO"}[c.mode]||c.mode.toUpperCase();
   const bc={live:"live",demo:"mock",nomodel:"err"}[c.mode]||"mock";
   $("modeBadge").textContent=bt; $("modeBadge").className="badge "+bc;
+  $("srcTag").textContent = c.source ? ("· Inventario: " + c.source) : "";
   $("chat").innerHTML=""; bubble(c.greeting,"in");
   $("starters").innerHTML=""; c.starters.forEach(s=>{ const b=document.createElement("button"); b.textContent=s; b.onclick=()=>sendText(s); $("starters").appendChild(b); });
 }
