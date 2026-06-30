@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "White-label WhatsApp-style agent demo (CDMX): real estate + restaurant on one runtime. Zero runtime dependencies.",
+  "description": "White-label WhatsApp-style agent (CDMX): real estate + restaurant on one runtime. Live LLM + live MLS data; optional Postgres persistence.",
+  "engines": { "node": ">=18" },
   "scripts": {
     "start": "node server.js",
     "live": "LLM=api node server.js",
     "test": "node uat.mjs",
     "smoke": "node _test_llm.mjs",
     "verify": "node verify-live.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
   }
 }

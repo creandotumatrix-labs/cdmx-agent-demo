@@ -11,6 +11,7 @@ import { CONFIGS, DEFAULT_VERTICAL } from "./src/configs.js";
 import { mockRespond } from "./src/mockAgent.js";
 import { runAgent, LLM } from "./src/llm.js";
 import { _state, dataSource } from "./src/tools.js";
+import * as store from "./src/store.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -70,7 +71,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { leads: _state.leads, bookings: _state.bookings });
     }
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource() });
+      return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource(), store: store.storeMode() });
     }
     if (req.method === "GET" && url.pathname === "/dashboard") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -86,8 +87,9 @@ const server = http.createServer(async (req, res) => {
   } catch (e) { console.error(e); send(res, 500, { error: e.message }); }
 });
 
+const STORE = await store.init(_state);
 server.listen(PORT, () => {
-  console.log(`\n  CDMX Agent Demo  ·  LLM: ${LLM}  ·  badge: ${uiMode.toUpperCase()}`);
+  console.log(`\n  CDMX Agent Demo  ·  LLM: ${LLM}  ·  badge: ${uiMode.toUpperCase()}  ·  store: ${STORE}`);
   console.log(`  ▶  http://localhost:${PORT}\n`);
   if (uiMode === "demo") console.log("  No model reachable — running the deterministic DEMO agent (badge shows DEMO).\n  For the real agent: have `claude` on PATH (LLM=claude-cli), or set LLM=api with a key.\n");
   else if (LLM === "claude-cli") console.log("  Live on your Max plan via `claude -p`.\n");

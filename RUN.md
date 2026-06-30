@@ -41,8 +41,16 @@ The line that sells it: *"one engine, swap a config file = a new business — th
 - **Real now:** the LLM agent, native tool-calling, grounded data (no hallucinations), tool-computed totals, structured human handoff, white-label vertical swap, the WhatsApp-style UX.
 - **Next (productization, not needed to show the MVP):** a real WhatsApp Cloud API number, the client's own catalog/menu, real Google Calendar / CRM / POS writes, a database, multi-tenant + billing. See `cdmx-agent-STATUS.md`.
 
+## Deploy to Railway (live URL)
+1. railway.app → **New Project → Deploy from GitHub repo** → `adventurewave-labs/cdmx-agent-demo`.
+2. **+ New → Database → PostgreSQL** — Railway injects `DATABASE_URL`; the app creates its tables on boot and rehydrates the dashboard after restarts.
+3. Service **Variables:** `LLM=api`, `ANTHROPIC_API_KEY=…`, `MODEL=claude-sonnet-4-6` (add `DATABASE_SSL=true` only if your Postgres needs SSL).
+4. Deploy. Nixpacks builds it, starts `node server.js`, healthchecks `/health`, and **auto-deploys on every push to `main`**. The public URL serves the chat at `/` and the broker dashboard at `/dashboard`.
+
+Without `DATABASE_URL` the app runs in memory mode (zero deps); durable Postgres turns on automatically once the plugin is attached.
+
 ## Quick checks
 ```bash
-npm test      # UAT — 22 assertions over the real tools (CI uses LLM=offline)
-npm run smoke # 7-point grounded-tools check
+npm test      # UAT — 16 checks over the real tools (CI uses LLM=offline)
+npm run smoke # grounded-tools smoke test
 ```
