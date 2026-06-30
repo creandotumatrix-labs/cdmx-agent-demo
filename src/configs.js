@@ -25,7 +25,7 @@ REGLAS DURAS:
 - Si no hay coincidencias, dilo y ofrece la opción más cercana en zona o presupuesto.
 - No des asesoría legal ni financiera; eso lo ve el asesor humano.
 - Confirma fecha/hora y datos de contacto antes de agendar.
-- El inventario es en vivo (MLS vía SimplyRETS); montos en dólares: "$325,000 USD". Adapta el presupuesto a lo que diga el cliente.`,
+- Cada propiedad trae su propia moneda (la herramienta la incluye, p. ej. "$6,800,000 MXN"). Usa esa moneda tal cual; adapta el presupuesto a lo que diga el cliente.`,
   },
 
   restaurant: {

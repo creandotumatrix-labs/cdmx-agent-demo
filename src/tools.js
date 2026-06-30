@@ -14,12 +14,12 @@ const MENU = load("menu.json");
 // In-memory state (per process). Keyed by sessionId where relevant.
 const state = { bookings: [], leads: [], orders: {}, completedOrders: [], ticketSeq: 240, folioSeq: 5000 };
 
-export const money = (n) => "$" + Number(n).toLocaleString("en-US") + " USD";
+export const money = (n, moneda = "MXN") => "$" + Number(n).toLocaleString(moneda === "USD" ? "en-US" : "es-MX") + " " + moneda;
 const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 // ---------- Real-estate inventory: SimplyRETS live, committed snapshot fallback ----------
-let LISTINGS = load("listings.json"); // committed real snapshot (fallback)
-let SOURCE = "snapshot en caché";
+let LISTINGS = load("listings.json"); // curated CDMX inventory (default demo set)
+let SOURCE = "CDMX (demo)";
 export const dataSource = () => SOURCE;
 export const allListings = () => LISTINGS;
 
@@ -29,6 +29,7 @@ function mapProp(p) {
   return {
     id: String(p.mlsId || p.listingId || Math.random().toString(36).slice(2, 8)),
     op: "venta",
+    moneda: "USD",
     colonia: a.city || a.neighborhood || a.state || "—",
     precio: p.listPrice || 0,
     recamaras: pr.bedrooms || 0,
@@ -56,7 +57,9 @@ async function loadLive() {
   } catch { /* offline / blocked → keep the committed snapshot */ }
   finally { clearTimeout(timer); }
 }
-await loadLive(); // real API call at import; falls back to the committed snapshot when offline
+// Inventory source: curated CDMX snapshot by default (coherent demo data).
+// Set INVENTORY=live to pull real listings from the SimplyRETS MLS API instead.
+if ((process.env.INVENTORY || "curated").toLowerCase() === "live") await loadLive();
 
 export function search_listings(args = {}) {
   const { colonia, max_precio, min_precio, recamaras } = args;
