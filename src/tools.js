@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
-const load = (f) => JSON.parse(readFileSync(path.join(__dir, f), "utf8"));
+const load = (f) => JSON.parse(readFileSync(path.join(__dir, "..", "data", f), "utf8"));
 
 const LISTINGS = load("listings.json");
 const MENU = load("menu.json");

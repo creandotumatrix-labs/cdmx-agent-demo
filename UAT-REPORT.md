@@ -1,7 +1,7 @@
 # UAT Report — cdmx-agent-demo
 
 **Result:** ✅ PASS — 22/22 checks passed
-**When:** 2026-06-30T00:33:29.315Z
+**When:** 2026-06-30T01:12:42.109Z
 **Scope:** full stack via HTTP (deterministic offline agent over the real tools) + the real-model API adapter (HTTP stubbed, adapter code real).
 **Not covered here:** live model *quality* (es-MX phrasing) — that needs your Max/key and is exercised by `verify-live.js`.
 

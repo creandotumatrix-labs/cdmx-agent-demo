@@ -1,6 +1,6 @@
 // Offline smoke test — no model, no network. Verifies the grounded tools.
 //   node _test_llm.mjs
-import { search_listings, add_to_order, create_order } from "./tools.js";
+import { search_listings, add_to_order, create_order } from "./src/tools.js";
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => (cond ? (pass++, console.log("  ✅ " + name)) : (fail++, console.log("  ❌ " + name)));
