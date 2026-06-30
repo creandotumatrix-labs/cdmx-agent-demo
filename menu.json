@@ -1,0 +1,16 @@
+[
+  { "id": "taco_pastor", "nombre": "Taco de pastor", "categoria": "Tacos", "precio": 30, "modificadores": ["con todo", "sin cebolla", "sin cilantro", "con piña"], "disponible": true },
+  { "id": "taco_suadero", "nombre": "Taco de suadero", "categoria": "Tacos", "precio": 28, "modificadores": ["con todo", "sin cebolla", "sin cilantro"], "disponible": true },
+  { "id": "taco_bistec", "nombre": "Taco de bistec", "categoria": "Tacos", "precio": 34, "modificadores": ["con todo", "sin cebolla", "sin cilantro"], "disponible": true },
+  { "id": "taco_campechano", "nombre": "Taco campechano", "categoria": "Tacos", "precio": 36, "modificadores": ["con todo", "sin cebolla"], "disponible": true },
+  { "id": "gringa_pastor", "nombre": "Gringa de pastor", "categoria": "Especialidades", "precio": 75, "modificadores": ["con todo", "extra queso"], "disponible": true },
+  { "id": "quesadilla", "nombre": "Quesadilla", "categoria": "Especialidades", "precio": 45, "modificadores": ["pastor", "suadero", "queso", "champiñón"], "disponible": true },
+  { "id": "orden_guacamole", "nombre": "Orden de guacamole", "categoria": "Para compartir", "precio": 45, "modificadores": [], "promo": true, "disponible": true },
+  { "id": "orden_papas", "nombre": "Papas a la francesa", "categoria": "Para compartir", "precio": 55, "modificadores": ["con queso"], "disponible": true },
+  { "id": "agua_horchata", "nombre": "Agua de horchata", "categoria": "Bebidas", "precio": 35, "modificadores": ["chica", "grande"], "disponible": true },
+  { "id": "agua_jamaica", "nombre": "Agua de jamaica", "categoria": "Bebidas", "precio": 35, "modificadores": ["chica", "grande"], "disponible": true },
+  { "id": "refresco", "nombre": "Refresco", "categoria": "Bebidas", "precio": 30, "modificadores": ["Coca", "Sprite", "Sidral"], "disponible": true },
+  { "id": "cerveza", "nombre": "Cerveza", "categoria": "Bebidas", "precio": 45, "modificadores": ["clara", "oscura"], "disponible": true },
+  { "id": "flan", "nombre": "Flan napolitano", "categoria": "Postres", "precio": 40, "modificadores": [], "disponible": true },
+  { "id": "churros", "nombre": "Churros con cajeta", "categoria": "Postres", "precio": 50, "modificadores": [], "disponible": false }
+]

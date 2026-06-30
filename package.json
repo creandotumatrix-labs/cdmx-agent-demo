@@ -1,0 +1,15 @@
+{
+  "name": "cdmx-agent-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "White-label WhatsApp-style agent demo (CDMX) — real estate + restaurant on one runtime.",
+  "scripts": {
+    "start": "node server.js",
+    "live": "MODE=live node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "zod": "^3.23.8"
+  }
+}

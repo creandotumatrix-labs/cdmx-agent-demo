@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CDMX Agent · Demo</title>
+<style>
+  :root { --brand:#0F766E; --bg:#0b141a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         background:linear-gradient(135deg,#111b21,#1f2c33); color:#111; min-height:100vh;
+         display:flex; flex-direction:column; align-items:center; gap:14px; padding:22px 12px; }
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  .seg { display:flex; background:#0c171d; border:1px solid #2a3942; border-radius:999px; padding:4px; }
+  .seg button { border:0; background:transparent; color:#aebac1; padding:8px 16px; border-radius:999px; cursor:pointer; font-size:14px; font-weight:600; }
+  .seg button.active { background:var(--brand); color:#fff; }
+  .ghost { background:#0c171d; color:#aebac1; border:1px solid #2a3942; border-radius:999px; padding:9px 16px; cursor:pointer; font-weight:600; font-size:14px; }
+  .badge { font-size:11px; font-weight:700; letter-spacing:.5px; padding:4px 9px; border-radius:999px; }
+  .badge.mock { background:#3a2a00; color:#ffcc66; } .badge.live { background:#06351f; color:#5cffa6; }
+
+  .phone { width:390px; max-width:96vw; height:760px; max-height:86vh; background:#0b141a; border-radius:30px;
+           box-shadow:0 24px 60px rgba(0,0,0,.5); overflow:hidden; display:flex; flex-direction:column; border:9px solid #000; }
+  header.bar { background:var(--brand); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:11px; transition:background .3s; }
+  .avatar { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.22); display:grid; place-items:center; font-size:19px; font-weight:700; }
+  .bar .who { line-height:1.2; } .bar .who b { font-size:16px; } .bar .who span { font-size:12px; opacity:.85; }
+  .bar .spacer { flex:1; }
+  .chat { flex:1; padding:14px; overflow-y:auto; background:#0b141a;
+          background-image:radial-gradient(rgba(255,255,255,.03) 1px, transparent 1px); background-size:18px 18px; }
+  .row { display:flex; margin:6px 0; }
+  .row.out { justify-content:flex-end; }
+  .bubble { max-width:78%; padding:8px 11px 7px; border-radius:10px; font-size:14.5px; line-height:1.42; position:relative;
+            box-shadow:0 1px 1px rgba(0,0,0,.2); white-space:pre-wrap; word-wrap:break-word; }
+  .in .bubble { background:#202c33; color:#e9edef; border-top-left-radius:2px; }
+  .out .bubble { background:#005c4b; color:#e9edef; border-top-right-radius:2px; }
+  .bubble .t { display:block; font-size:10.5px; opacity:.6; text-align:right; margin-top:3px; }
+  .card { background:#0b141a; border:1px solid #2a3942; border-radius:12px; overflow:hidden; margin:6px 0; max-width:78%; }
+  .card img { width:100%; height:150px; object-fit:cover; display:block; }
+  .card .body { padding:9px 11px; color:#e9edef; font-size:13.5px; }
+  .card .price { color:#7ee2c1; font-weight:700; }
+  .ticket { background:#202c33; border:1px dashed #4a5a62; border-radius:12px; padding:11px; color:#e9edef; font-size:13.5px; max-width:78%; }
+  .ticket h4 { margin:0 0 6px; color:#7ee2c1; }
+  .typing .bubble { color:#8696a0; }
+  .dots span { display:inline-block; width:6px; height:6px; margin:0 1px; background:#8696a0; border-radius:50%; animation:b 1.2s infinite; }
+  .dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+  @keyframes b{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+  .starters { display:flex; gap:7px; flex-wrap:wrap; padding:0 14px 8px; }
+  .starters button { background:#202c33; color:#8aa9b8; border:1px solid #2a3942; border-radius:999px; padding:7px 12px; font-size:12.5px; cursor:pointer; }
+  .composer { display:flex; gap:8px; padding:10px; background:#0c171d; }
+  .composer input { flex:1; border:0; border-radius:999px; padding:11px 15px; font-size:14.5px; background:#202c33; color:#e9edef; outline:none; }
+  .composer button { border:0; width:46px; border-radius:50%; background:var(--brand); color:#fff; font-size:18px; cursor:pointer; }
+  .panel { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:20px; }
+  .panel.open { display:flex; }
+  .panel .inner { background:#0b141a; color:#e9edef; border:1px solid #2a3942; border-radius:16px; width:460px; max-width:96vw; max-height:80vh; overflow:auto; padding:18px; }
+  .panel h3 { margin:0 0 4px; } .panel .muted{color:#8696a0;font-size:13px;margin-bottom:12px}
+  .lead { border:1px solid #2a3942; border-radius:10px; padding:10px; margin:8px 0; font-size:13.5px; }
+  .lead b{color:#7ee2c1}
+  .foot { color:#7b8b93; font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="seg" id="seg">
+      <button data-v="real_estate" class="active">🏡 Inmobiliaria</button>
+      <button data-v="restaurant">🌮 Restaurante</button>
+    </div>
+    <button class="ghost" id="handoffBtn">📋 Vista del asesor</button>
+    <span class="badge mock" id="modeBadge">MOCK</span>
+  </div>
+
+  <div class="phone">
+    <header class="bar" id="bar">
+      <div class="avatar" id="avatar">C</div>
+      <div class="who"><b id="brandName">Casa Nova</b><br><span id="brandTag">en línea</span></div>
+      <div class="spacer"></div>
+      <div style="opacity:.8">📞  ⋮</div>
+    </header>
+    <div class="chat" id="chat"></div>
+    <div class="starters" id="starters"></div>
+    <div class="composer">
+      <input id="input" placeholder="Escribe un mensaje" autocomplete="off" />
+      <button id="send">➤</button>
+    </div>
+  </div>
+  <div class="foot">Demo white-label · cambia de vertical sin tocar el código · acciones reales sobre datos sembrados</div>
+
+  <div class="panel" id="panel"><div class="inner">
+    <h3>Vista del asesor — leads y visitas</h3>
+    <div class="muted">Lo que el agente entregó automáticamente al humano.</div>
+    <div id="handoffBody"></div>
+    <button class="ghost" style="margin-top:10px" onclick="document.getElementById('panel').classList.remove('open')">Cerrar</button>
+  </div></div>
+
+<script>
+const sessionId = "s-" + Math.random().toString(36).slice(2);
+let vertical = "real_estate";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+const md = (s) => esc(s).replace(/\*(.+?)\*/g,"<b>$1</b>").replace(/_(.+?)_/g,"<i>$1</i>").replace(/\n/g,"<br>");
+const now = () => new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+
+function bubble(text, side) {
+  const row = document.createElement("div"); row.className = "row " + (side==="out"?"out":"in");
+  row.innerHTML = `<div class="bubble">${md(text)}<span class="t">${now()}</span></div>`;
+  $("chat").appendChild(row); scroll();
+}
+function listingCards(listings){
+  for(const l of listings){
+    const row=document.createElement("div"); row.className="row in";
+    row.innerHTML=`<div class="card"><img src="${l.foto}" loading="lazy"/><div class="body">
+      <b>${l.colonia}</b> · ${l.recamaras} rec · ${l.banos} baños · ${l.m2} m²<br>
+      <span class="price">$${l.precio.toLocaleString("es-MX")} MXN${l.op==="renta"?" / mes":""}</span><br>
+      <span style="opacity:.7">${l.id} — ${l.descripcion}</span></div></div>`;
+    $("chat").appendChild(row);
+  }
+  scroll();
+}
+function ticketCard(tk){
+  const row=document.createElement("div"); row.className="row in";
+  const items=tk.items.map(i=>`• ${i.qty} ${i.nombre} — $${(i.precio*i.qty).toLocaleString("es-MX")}`).join("<br>");
+  row.innerHTML=`<div class="ticket"><h4>🧾 Ticket ${tk.folio} · cocina</h4>${items}<br><b>Total: $${tk.total.toLocaleString("es-MX")} MXN</b><br><span style="opacity:.7">${tk.tipo}${tk.hora?" · "+tk.hora:""}</span></div>`;
+  $("chat").appendChild(row); scroll();
+}
+function typing(on){
+  let el=$("typing");
+  if(on){ if(el)return; el=document.createElement("div"); el.id="typing"; el.className="row in typing";
+    el.innerHTML='<div class="bubble dots"><span></span><span></span><span></span></div>';
+    $("chat").appendChild(el); scroll(); }
+  else if(el) el.remove();
+}
+const scroll = () => { const c=$("chat"); c.scrollTop=c.scrollHeight; };
+
+async function loadConfig(){
+  const r=await fetch("/api/config?v="+vertical); const c=await r.json();
+  document.documentElement.style.setProperty("--brand", c.brand.color);
+  $("avatar").textContent=c.brand.initial; $("brandName").textContent=c.brand.name; $("brandTag").textContent=c.brand.tagline;
+  $("modeBadge").textContent=c.mode.toUpperCase(); $("modeBadge").className="badge "+(c.mode==="live"?"live":"mock");
+  $("chat").innerHTML=""; bubble(c.greeting,"in");
+  $("starters").innerHTML=""; c.starters.forEach(s=>{ const b=document.createElement("button"); b.textContent=s; b.onclick=()=>sendText(s); $("starters").appendChild(b); });
+}
+async function sendText(text){
+  if(!text.trim())return; bubble(text,"out"); $("input").value=""; typing(true);
+  try{
+    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId,vertical,text})});
+    const d=await r.json(); typing(false);
+    bubble(d.reply,"in");
+    if(d.listings&&d.listings.length) listingCards(d.listings);
+    if(d.ticket) ticketCard(d.ticket);
+  }catch(e){ typing(false); bubble("⚠️ error: "+e.message,"in"); }
+}
+async function swap(v){
+  vertical=v; [...$("seg").children].forEach(b=>b.classList.toggle("active",b.dataset.v===v));
+  await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId})});
+  loadConfig();
+}
+async function showHandoff(){
+  const r=await fetch("/api/handoff"); const d=await r.json();
+  let h="";
+  if(!d.leads.length&&!d.bookings.length) h='<div class="muted">Aún no hay leads. Completa una conversación primero.</div>';
+  d.leads.forEach(l=>{ h+=`<div class="lead"><b>${l.nombre||"—"}</b> · ${l.telefono||"—"}<br>${l.operacion||""} ${l.colonia||""} ${l.presupuesto?("· $"+l.presupuesto.toLocaleString("es-MX")):""} ${l.recamaras?("· "+l.recamaras+" rec"):""}<br><span style="opacity:.7">${l.id} · propiedad ${l.listing_id||"—"} · ${l.score}</span></div>`; });
+  d.bookings.forEach(b=>{ h+=`<div class="lead">🗓️ Visita <b>${b.folio}</b> · ${b.colonia} · ${b.fecha||""} ${b.hora||""}<br><span style="opacity:.7">${b.nombre||""} ${b.telefono||""}</span></div>`; });
+  $("handoffBody").innerHTML=h; $("panel").classList.add("open");
+}
+
+$("send").onclick=()=>sendText($("input").value);
+$("input").addEventListener("keydown",e=>{ if(e.key==="Enter") sendText($("input").value); });
+$("seg").addEventListener("click",e=>{ if(e.target.dataset.v) swap(e.target.dataset.v); });
+$("handoffBtn").onclick=showHandoff;
+loadConfig();
+</script>
+</body>
+</html>
