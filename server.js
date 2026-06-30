@@ -69,6 +69,19 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/handoff") {
       return send(res, 200, { leads: _state.leads, bookings: _state.bookings });
     }
+    if (req.method === "GET" && url.pathname === "/health") {
+      return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource() });
+    }
+    if (req.method === "GET" && url.pathname === "/dashboard") {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(readFileSync(path.join(__dir, "public", "dashboard.html"), "utf8"));
+    }
+    if (req.method === "GET" && url.pathname === "/api/dashboard") {
+      const leads = _state.leads, bookings = _state.bookings, orders = _state.completedOrders;
+      const pipeline = leads.reduce((s, l) => s + (Number(l.presupuesto) || 0), 0);
+      const revenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+      return send(res, 200, { kpis: { leads: leads.length, viewings: bookings.length, orders: orders.length, pipeline, revenue }, leads, bookings, orders, inventory: dataSource() });
+    }
     send(res, 404, { error: "not_found" });
   } catch (e) { console.error(e); send(res, 500, { error: e.message }); }
 });
