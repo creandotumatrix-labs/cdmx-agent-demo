@@ -57,9 +57,15 @@ async function loadLive() {
   } catch { /* offline / blocked → keep the committed snapshot */ }
   finally { clearTimeout(timer); }
 }
-// Inventory source: curated CDMX snapshot by default (coherent demo data).
-// Set INVENTORY=live to pull real listings from the SimplyRETS MLS API instead.
-if ((process.env.INVENTORY || "curated").toLowerCase() === "live") await loadLive();
+// LIVE by default: real listings pulled from the SimplyRETS MLS API at boot — real API
+// calls, no seeded data. The committed snapshot is a last-resort fallback used ONLY if the
+// live API is unreachable, so the service never hard-fails. INVENTORY=curated forces demo.
+const INV = (process.env.INVENTORY || "live").toLowerCase();
+if (INV === "live") {
+  SOURCE = "MLS (conectando…)";
+  await loadLive();                                  // sets "SimplyRETS API (en vivo)" on success
+  if (SOURCE !== "SimplyRETS API (en vivo)") SOURCE = "Respaldo MLS (sin conexión)";
+}
 
 export function search_listings(args = {}) {
   const { colonia, max_precio, min_precio, recamaras } = args;
