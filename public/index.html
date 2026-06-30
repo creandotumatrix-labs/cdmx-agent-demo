@@ -16,7 +16,7 @@
   .seg button.active { background:var(--brand); color:#fff; }
   .ghost { background:#0c171d; color:#aebac1; border:1px solid #2a3942; border-radius:999px; padding:9px 16px; cursor:pointer; font-weight:600; font-size:14px; }
   .badge { font-size:11px; font-weight:700; letter-spacing:.5px; padding:4px 9px; border-radius:999px; }
-  .badge.mock { background:#3a2a00; color:#ffcc66; } .badge.live { background:#06351f; color:#5cffa6; }
+  .badge.mock { background:#3a2a00; color:#ffcc66; } .badge.live { background:#06351f; color:#5cffa6; } .badge.err { background:#3a0e0e; color:#ff8a8a; }
 
   .phone { width:390px; max-width:96vw; height:760px; max-height:86vh; background:#0b141a; border-radius:30px;
            box-shadow:0 24px 60px rgba(0,0,0,.5); overflow:hidden; display:flex; flex-direction:column; border:9px solid #000; }
@@ -152,7 +152,9 @@ async function loadConfig(){
   const r=await fetch("/api/config?v="+vertical); const c=await r.json();
   document.documentElement.style.setProperty("--brand", c.brand.color);
   $("avatar").textContent=c.brand.initial; $("brandName").textContent=c.brand.name; $("brandTag").textContent=c.brand.tagline;
-  $("modeBadge").textContent=c.mode.toUpperCase(); $("modeBadge").className="badge "+(c.mode==="live"?"live":"mock");
+  const bt={live:"LIVE",demo:"DEMO",nomodel:"SIN MODELO"}[c.mode]||c.mode.toUpperCase();
+  const bc={live:"live",demo:"mock",nomodel:"err"}[c.mode]||"mock";
+  $("modeBadge").textContent=bt; $("modeBadge").className="badge "+bc;
   $("chat").innerHTML=""; bubble(c.greeting,"in");
   $("starters").innerHTML=""; c.starters.forEach(s=>{ const b=document.createElement("button"); b.textContent=s; b.onclick=()=>sendText(s); $("starters").appendChild(b); });
 }
