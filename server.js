@@ -21,7 +21,7 @@ function liveUsable() {
   if (LLM === "api") return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY);
   try { execSync("command -v claude", { stdio: "ignore" }); return true; } catch { return false; }
 }
-const uiMode = liveUsable() ? "live" : "demo";
+const uiMode = liveUsable() ? "live" : (LLM === "offline" ? "demo" : "nomodel");
 
 function getSession(id, vertical) {
   let s = sessions.get(id);
@@ -31,10 +31,15 @@ function getSession(id, vertical) {
 function persist() {
   try { writeFileSync(path.join(__dir, "data", "_handoff.json"), JSON.stringify({ leads: _state.leads, bookings: _state.bookings }, null, 2)); } catch {}
 }
+// Mock runs ONLY when explicitly requested (LLM=offline, for dev/CI). In any live
+// mode a model failure fails loudly — it never silently falls back to a mock.
 async function respond(config, session, text) {
   if (LLM === "offline") return mockRespond(config, session, text);
   try { return await runAgent(config, session, text); }
-  catch (e) { console.error("[live error → offline fallback]", e.message); return { ...mockRespond(config, session, text), _fallback: e.message }; }
+  catch (e) {
+    console.error("[live model error]", e.message);
+    return { reply: "⚠️ No hay un modelo disponible. Inicia sesión en Claude Code (plan Max), o usa LLM=api con una API key. Para pruebas sin modelo: LLM=offline.", _error: e.message };
+  }
 }
 
 const send = (res, code, obj) => { res.writeHead(code, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify(obj)); };
