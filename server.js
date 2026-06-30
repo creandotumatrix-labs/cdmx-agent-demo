@@ -32,6 +32,14 @@ function getSession(id, vertical) {
 function persist() {
   try { writeFileSync(path.join(__dir, "data", "_handoff.json"), JSON.stringify({ leads: _state.leads, bookings: _state.bookings }, null, 2)); } catch {}
 }
+// Per-request language directive. The agent (and configs) are Spanish-first; when the
+// customer writes in English we append an instruction so the model replies in English.
+const LANG_DIRECTIVE = {
+  es: "\n\nIDIOMA: Responde SIEMPRE en español mexicano, cálido y breve.",
+  en: "\n\nLANGUAGE: The customer is writing in English. Reply ONLY in natural, warm, concise English. Translate neighborhoods, amenities and menu items to English, but keep currency codes (MXN/USD), prices and proper names exactly as the tools return them.",
+};
+const withLang = (config, lang) => ({ ...config, systemPrompt: config.systemPrompt + (LANG_DIRECTIVE[lang] || LANG_DIRECTIVE.es) });
+
 // Mock runs ONLY when explicitly requested (LLM=offline, for dev/CI). In any live
 // mode a model failure fails loudly — it never silently falls back to a mock.
 async function respond(config, session, text) {
@@ -58,8 +66,8 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { mode: uiMode, llm: LLM, vertical: c.id, brand: c.brand, greeting: c.greeting, starters: c.starters, source: c.id === "real_estate" ? dataSource() : null });
     }
     if (req.method === "POST" && url.pathname === "/api/chat") {
-      const { sessionId = "default", vertical = DEFAULT_VERTICAL, text = "" } = await body(req);
-      const config = CONFIGS[vertical] || CONFIGS[DEFAULT_VERTICAL];
+      const { sessionId = "default", vertical = DEFAULT_VERTICAL, text = "", lang = "es" } = await body(req);
+      const config = withLang(CONFIGS[vertical] || CONFIGS[DEFAULT_VERTICAL], lang);
       const out = await respond(config, getSession(sessionId, vertical), text);
       persist();
       return send(res, 200, out);
