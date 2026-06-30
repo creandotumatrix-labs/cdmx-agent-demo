@@ -48,7 +48,7 @@ async function loadLive() {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const r = await fetch("https://api.simplyrets.com/properties?limit=50", { headers: { Authorization: auth }, signal: ctrl.signal });
+    const r = await fetch("https://api.simplyrets.com/properties?minbeds=3&limit=100", { headers: { Authorization: auth }, signal: ctrl.signal });
     if (!r.ok) throw new Error("simplyrets " + r.status);
     const data = await r.json();
     const mapped = (Array.isArray(data) ? data : []).map(mapProp).filter((l) => l.precio > 0);
@@ -68,6 +68,13 @@ export function search_listings(args = {}) {
   let r = LISTINGS.filter((l) => byPriceBeds(l) && (!zonas.length || zonas.some((z) => norm(l.colonia).includes(z) || z.includes(norm(l.colonia)))));
   // If a named zone wiped out results, keep the price/bed matches (zone is a nice-to-have).
   if (!r.length && zonas.length) r = LISTINGS.filter(byPriceBeds);
+  // If a strict bedroom count left us thin, fall back to price-only so the agent still
+  // surfaces 2–3 real options (preferring the most bedrooms, then the lowest price).
+  if (r.length < 2 && recamaras) {
+    const priceOnly = (l) => (!max_precio || l.precio <= Number(max_precio)) && (!min_precio || l.precio >= Number(min_precio));
+    const more = LISTINGS.filter(priceOnly).sort((a, b) => (b.recamaras - a.recamaras) || (a.precio - b.precio)).slice(0, 3);
+    if (more.length > r.length) r = more;
+  }
   r = r.sort((a, b) => a.precio - b.precio).slice(0, 3);
   return { count: r.length, listings: r, source: SOURCE };
 }
