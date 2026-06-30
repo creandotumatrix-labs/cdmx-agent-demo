@@ -42,19 +42,19 @@ node _test_llm.mjs              # 7-point grounded-tools smoke test
 
 ## Demo script (90 seconds)
 1. **Real estate:** `Hola, busco rentar en la Roma` → answer its questions (budget `25 mil`, `2 recámaras`) → 3 real listings with photos → `quiero agendar la 1` → give a day/time → `Marcos, 55 1234 5678`.
-2. Hit **📋 Vista del asesor** → the qualified lead + booked viewing the agent handed off (also written to `_handoff.json`).
+2. Hit **📋 Vista del asesor** → the qualified lead + booked viewing the agent handed off (also written to `data/_handoff.json`).
 3. **Swap to 🌮 Restaurante** (top toggle) → header re-brands instantly, same backend → `3 tacos de pastor y una horchata` → it upsells guac → `es todo` → `para llevar 2pm` → kitchen **ticket** prints. That swap is the white-label story.
 
 ## Architecture (the product part)
 ```
 server.js          HTTP server (Node built-in, zero deps)
-llm.js         ← the agent: shared tool-loop + claude-cli (Max) and api adapters
-tools.js       grounded tool handlers (search_listings, book_viewing, create_order, …)
-configs.js     ← white-label config packs (persona + brand + tools per vertical)
-mockAgent.js   offline deterministic fallback
-listings.json ~12 CDMX listings   (swap this = new brokerage)
-menu.json     taquería menu         (swap this = new restaurant)
-index.html  WhatsApp-style UI
+src/llm.js         ← the agent: shared tool-loop + claude-cli (Max) and api adapters
+src/tools.js       grounded tool handlers (search_listings, book_viewing, create_order, …)
+src/configs.js     ← white-label config packs (persona + brand + tools per vertical)
+src/mockAgent.js   offline deterministic fallback
+data/listings.json ~12 CDMX listings   (swap this = new brokerage)
+data/menu.json     taquería menu         (swap this = new restaurant)
+public/index.html  WhatsApp-style UI
 verify-live.js     one-command real-agent proof
 ```
 **Adding a client or vertical = a new config pack + a data file. No code change.** That's what makes it resellable.
