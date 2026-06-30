@@ -31,7 +31,7 @@ node verify-live.js          # runs a full real-estate conversation through the 
 Green output = the agent qualified, searched, booked, and handed off using real tool calls. If this is green tonight, tomorrow is solid. (If it errors, you're not on a model — fix auth/key before the meeting.)
 
 ## Demo script (90 seconds)
-1. **Real estate:** type `Hola, busco rentar en la Roma` → answer budget (`25 mil`) and `2 recámaras` → 3 real listings with photos appear → tap **Agendar la 1** → give a day/time → `Marcos, 55 1234 5678`.
+1. **Real estate:** type `Busco casa para comprar` → give a budget (e.g., `hasta 500,000`) and `3 recámaras` → **real MLS listings with real photos** appear (live from the SimplyRETS API — the header shows "Inventario: SimplyRETS API (en vivo)") → tap **Agendar la 1** → give a day/time → `Marcos, 55 1234 5678`.
 2. Hit **📋 Vista del asesor** → the qualified lead + booked viewing the agent captured and handed to the human.
 3. Toggle **🌮 Restaurante** → the whole UI re-brands (same engine) → `3 tacos de pastor y una horchata` → it upsells guac → `es todo` → `para llevar 2pm` → a kitchen ticket prints.
 

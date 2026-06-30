@@ -1,19 +1,18 @@
-// Offline smoke test — no model, no network. Verifies the grounded tools.
+// Offline smoke test — grounded tools, data-agnostic (works with live or cached inventory).
 //   node _test_llm.mjs
-import { search_listings, add_to_order, create_order } from "./src/tools.js";
+import { search_listings, add_to_order, create_order, dataSource, allListings } from "./src/tools.js";
 
 let pass = 0, fail = 0;
 const ok = (name, cond) => (cond ? (pass++, console.log("  ✅ " + name)) : (fail++, console.log("  ❌ " + name)));
 
-console.log("Real estate tools:");
-const a = search_listings({ op: "renta", colonia: "Roma", max_precio: 25000, recamaras: 2 });
-ok("rent/Roma/<=25k/2rec returns matches", a.count > 0);
-ok("all results respect budget", a.listings.every((l) => l.precio <= 25000));
-ok("all results are Roma Norte", a.listings.every((l) => l.colonia === "Roma Norte"));
-ok("all results >= 2 recámaras", a.listings.every((l) => l.recamaras >= 2));
-
-const none = search_listings({ op: "renta", colonia: "Cancun", max_precio: 5000 });
-ok("out-of-catalog (Cancún) returns nothing (no hallucination)", none.count === 0);
+console.log("Inventory:", dataSource(), "·", allListings().length, "listings");
+const all = search_listings({});
+ok("inventory returns listings", all.count > 0);
+ok("results carry price + beds", all.listings.every((l) => l.precio > 0 && l.recamaras >= 0));
+const prices = allListings().map((l) => l.precio).sort((a, b) => a - b);
+const mid = prices[Math.floor(prices.length / 2)] || 0;
+ok("max_precio filter respected", search_listings({ max_precio: mid }).listings.every((l) => l.precio <= mid));
+ok("impossible filter returns nothing (no hallucination)", search_listings({ min_precio: 1e12 }).count === 0);
 
 console.log("Restaurant tools:");
 add_to_order({ items: [{ id: "taco_pastor", qty: 3 }, { id: "agua_horchata", qty: 1 }] }, "smoke");

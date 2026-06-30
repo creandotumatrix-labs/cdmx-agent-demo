@@ -10,7 +10,7 @@ import path from "path";
 import { CONFIGS, DEFAULT_VERTICAL } from "./src/configs.js";
 import { mockRespond } from "./src/mockAgent.js";
 import { runAgent, LLM } from "./src/llm.js";
-import { _state } from "./src/tools.js";
+import { _state, dataSource } from "./src/tools.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -54,7 +54,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/api/config") {
       const c = CONFIGS[url.searchParams.get("v") || DEFAULT_VERTICAL] || CONFIGS[DEFAULT_VERTICAL];
-      return send(res, 200, { mode: uiMode, llm: LLM, vertical: c.id, brand: c.brand, greeting: c.greeting, starters: c.starters });
+      return send(res, 200, { mode: uiMode, llm: LLM, vertical: c.id, brand: c.brand, greeting: c.greeting, starters: c.starters, source: c.id === "real_estate" ? dataSource() : null });
     }
     if (req.method === "POST" && url.pathname === "/api/chat") {
       const { sessionId = "default", vertical = DEFAULT_VERTICAL, text = "" } = await body(req);
