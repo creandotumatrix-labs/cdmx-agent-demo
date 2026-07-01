@@ -78,13 +78,41 @@ export const calendarReady = () =>
   !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REFRESH_TOKEN));
 
 // ---------------------------------------------------------------- Google Calendar (event)
+// Build a Mexico-City WALL-CLOCK time. Do NOT convert to UTC here: Railway runs in UTC, so
+// `new Date(y,m,d,h).toISOString()` shifts the event −6h (5pm → 11am). Instead emit a naive
+// local datetime string (no trailing Z) and let Google apply the timeZone field below.
 function parseWhen(b) {
-  const isISO = /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || "");
-  const day = isISO ? new Date(b.fecha + "T12:00:00") : new Date(Date.now() + 24 * 3600 * 1000);
-  const hm = /^(\d{1,2}):(\d{2})$/.exec(b.hora || "");
-  const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hm ? +hm[1] : 12, hm ? +hm[2] : 0);
-  const end = new Date(start.getTime() + 45 * 60000);
-  return { start: start.toISOString(), end: end.toISOString() };
+  const MX = "America/Mexico_City";
+  const pad = (n) => String(n).padStart(2, "0");
+  // Day (Y-M-D): the ISO date if given, else "tomorrow" in Mexico City.
+  let y, mo, d;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(b.fecha || "");
+  if (iso) { y = +iso[1]; mo = +iso[2]; d = +iso[3]; }
+  else {
+    const p = new Intl.DateTimeFormat("en-CA", { timeZone: MX, year: "numeric", month: "2-digit", day: "2-digit" })
+      .format(new Date(Date.now() + 24 * 3600 * 1000));
+    [y, mo, d] = p.split("-").map(Number);
+  }
+  // Hour: accept "18:00", "6:00 pm", "6 pm", "6pm", "18", "6". If no time was given
+  // (e.g. an "asap" order), default to ~30 min from now in Mexico City so it lands in the
+  // near future instead of an arbitrary noon that may already be in the past.
+  let hh, mm;
+  const m = String(b.hora || "").trim().toLowerCase().match(/^(\d{1,2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/);
+  if (m) {
+    hh = +m[1]; mm = m[2] ? +m[2] : 0;
+    const ap = (m[3] || "").replace(/\./g, "");
+    if (ap === "pm" && hh < 12) hh += 12;
+    if (ap === "am" && hh === 12) hh = 0;
+  } else {
+    const soon = new Intl.DateTimeFormat("en-GB", { timeZone: MX, hour: "2-digit", minute: "2-digit", hour12: false })
+      .format(new Date(Date.now() + 30 * 60000));
+    [hh, mm] = soon.split(":").map(Number);
+  }
+  let eh = hh, em = mm + 45;
+  if (em >= 60) { em -= 60; eh += 1; }
+  if (eh > 23) { eh = 23; em = 59; }
+  const fmt = (H, M) => `${y}-${pad(mo)}-${pad(d)}T${pad(H)}:${pad(M)}:00`;
+  return { start: fmt(hh, mm), end: fmt(eh, em), tz: MX };
 }
 export async function createCalendarEvent(booking) {
   if (!calendarReady() || !booking) return;
@@ -97,8 +125,8 @@ export async function createCalendarEvent(booking) {
       summary: booking.summary || `Visita: ${booking.colonia || "propiedad"} (${booking.folio || ""})`,
       description: booking.description || (`Lead: ${booking.nombre || "—"} · Tel: ${booking.telefono || "—"}\n` +
                    `Solicitado: ${booking.fecha || ""} ${booking.hora || ""} · Propiedad ${booking.listing_id || booking.colonia || ""}`),
-      start: { dateTime: when.start, timeZone: "America/Mexico_City" },
-      end: { dateTime: when.end, timeZone: "America/Mexico_City" },
+      start: { dateTime: when.start, timeZone: when.tz },
+      end: { dateTime: when.end, timeZone: when.tz },
     };
     const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${cal}/events`, {
       method: "POST", headers: { Authorization: "Bearer " + token, "content-type": "application/json" },
