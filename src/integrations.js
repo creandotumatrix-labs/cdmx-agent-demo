@@ -127,6 +127,31 @@ export async function sendWhatsApp(to, bodyText) {
   } catch (e) { log("whatsapp", e); }
 }
 
+// Register the WhatsApp webhook via the Graph API (bypasses the dashboard form entirely).
+// Needs META_APP_SECRET (and META_APP_ID, defaults to the known app). Sets callback_url +
+// verify_token + subscribes the `messages` field in one call. Returns status, never secrets.
+export async function registerWhatsAppWebhook() {
+  const appId = process.env.META_APP_ID || "1665595468028864";
+  const secret = process.env.META_APP_SECRET;
+  if (!secret) return { ok: false, error: "Set META_APP_SECRET in Railway (Meta → App Settings → Basic → App secret)." };
+  const base = (process.env.PUBLIC_URL || "https://cdmx-agent-demo-production.up.railway.app").replace(/\/+$/, "");
+  const v = process.env.WHATSAPP_API_VERSION || "v21.0";
+  const params = new URLSearchParams({
+    object: "whatsapp_business_account",
+    callback_url: base + "/webhook",
+    verify_token: waVerifyToken() || "cdmx-verify-2026",
+    fields: "messages",
+    access_token: appId + "|" + secret,
+  });
+  try {
+    const r = await fetch(`https://graph.facebook.com/${v}/${appId}/subscriptions`, {
+      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: params,
+    });
+    const j = await r.json();
+    return { ok: r.ok && j && j.success !== false, status: r.status, callback: base + "/webhook", response: j };
+  } catch (e) { return { ok: false, error: e.message }; }
+}
+
 // Live credential probe — actively authenticates each token and reports ok/invalid.
 // Returns status strings only, never secret values.
 export async function diagnose() {
