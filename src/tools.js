@@ -22,7 +22,7 @@ async function loadMenuLive() {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 4000);
   try {
-    const r = await fetch("https://www.themealdb.com/api/json/v1/1/filter.php?c=Mexican", { signal: ctrl.signal });
+    const r = await fetch("https://www.themealdb.com/api/json/v1/1/filter.php?a=Mexican", { signal: ctrl.signal });
     if (!r.ok) throw new Error("themealdb " + r.status);
     const meals = ((await r.json()) || {}).meals || [];
     const mapped = meals.map((m) => {
@@ -149,6 +149,7 @@ export function create_lead(args = {}) {
 
 // ---------- Restaurant (local menu) ----------
 export function get_menu(args = {}) {
+  if (!/vivo/.test(MENU_SOURCE)) loadMenuLive();  // self-heal if the boot fetch missed the live API
   let m = MENU.filter((i) => i.disponible);
   if (args.categoria) m = m.filter((i) => norm(i.categoria).includes(norm(args.categoria)));
   return { items: m, source: MENU_SOURCE };
