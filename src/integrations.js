@@ -127,6 +127,30 @@ export async function sendWhatsApp(to, bodyText) {
   } catch (e) { log("whatsapp", e); }
 }
 
+// Live credential probe — actively authenticates each token and reports ok/invalid.
+// Returns status strings only, never secret values.
+export async function diagnose() {
+  const out = {};
+  if (whatsappReady()) {
+    try {
+      const v = process.env.WHATSAPP_API_VERSION || "v21.0";
+      const r = await fetch(`https://graph.facebook.com/${v}/${process.env.WHATSAPP_PHONE_NUMBER_ID}?fields=id`, { headers: { Authorization: "Bearer " + waToken() } });
+      out.whatsapp = r.ok ? "ok" : "invalid(" + r.status + ")";
+    } catch { out.whatsapp = "error"; }
+  } else out.whatsapp = "unset";
+  if (process.env.HUBSPOT_TOKEN) {
+    try {
+      const r = await fetch("https://api.hubapi.com/crm/v3/objects/contacts?limit=1", { headers: { Authorization: "Bearer " + process.env.HUBSPOT_TOKEN } });
+      out.hubspot = r.ok ? "ok" : "invalid(" + r.status + ")";
+    } catch { out.hubspot = "error"; }
+  } else out.hubspot = "unset";
+  if (calendarReady()) {
+    try { out.calendar = (await getGoogleAccessToken()) ? "ok" : "invalid(token)"; } catch { out.calendar = "error"; }
+  } else out.calendar = "unset";
+  out.rapidapi = process.env.RAPIDAPI_KEY ? "set" : "unset";
+  return out;
+}
+
 // Readiness snapshot for /health (booleans only — never values).
 export const integrationsStatus = () => ({
   whatsapp: whatsappReady(),
