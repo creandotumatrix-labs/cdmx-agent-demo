@@ -84,6 +84,7 @@
     <span class="sp"></span>
     <div class="seg" id="vseg"><button data-v="real_estate" class="on">🏡 <span data-i="v1">Inmobiliaria</span></button><button data-v="restaurant">🌮 <span data-i="v2">Restaurante</span></button></div>
     <div class="seg" id="lseg"><span style="display:flex;align-items:center;padding:0 4px 0 8px">🌐</span><button data-l="es" class="on">ES</button><button data-l="en">EN</button></div>
+    <button class="glink" id="reset" style="border:1px solid var(--line);background:#0c1512;border-radius:999px;padding:6px 12px;cursor:pointer;font-family:inherit" data-i="reset">↺ Reiniciar</button>
     <a class="glink" href="/" data-i="full">Chat completo ↗</a>
   </div>
 
@@ -129,13 +130,13 @@ const now=()=>new Date().toLocaleTimeString(lang==="en"?"en-US":"es-MX",{hour:"2
 const fmt=(n,m)=>"$"+Number(n||0).toLocaleString(m==="USD"?"en-US":"es-MX")+(m?" "+m:"");
 
 const T={
- es:{demolbl:"Demo en vivo",v1:"Inmobiliaria",v2:"Restaurante",full:"Chat completo ↗",clab:"Lo que ve tu CLIENTE",blab:"Lo que ve tu NEGOCIO",
+ es:{demolbl:"Demo en vivo",v1:"Inmobiliaria",v2:"Restaurante",full:"Chat completo ↗",reset:"↺ Reiniciar",clab:"Lo que ve tu CLIENTE",blab:"Lo que ve tu NEGOCIO",
   bsub:"· back-office · CRM · Calendario · el cliente nunca ve esto",hleads:"Leads calificados",hviews:"Visitas / Pedidos",
   hint:"↻ Se actualiza en vivo. Agenda una visita en el chat y obsérvala aparecer aquí.",foot:"Un mismo motor · distintos giros · acciones reales con cada cliente",online:"en línea",ph:"Escribe un mensaje",
   k:{leads:"Leads",viewings:"Visitas",orders:"Pedidos",pipeline:"Pipeline",revenue:"Ingresos"},noL:"Aún no hay leads.",noV:"Aún no hay visitas ni pedidos.",book:i=>`Agendar la ${i}`,bmsg:i=>`quiero agendar la ${i}`,
   greet:{real_estate:"¡Hola! 👋 Soy el asistente de Casa Nova. ¿Buscas comprar o rentar, y en qué presupuesto?",restaurant:"¡Qué tal! 🌮 Bienvenido a Taquería El Agave. ¿Te paso el menú o me dices qué se te antoja?"},
   start:{real_estate:["Busco casa para comprar","3 recámaras, sin límite de precio, muéstrame opciones"],restaurant:["¿Me pasas el menú?","3 tacos de pastor y una horchata"]}},
- en:{demolbl:"Live demo",v1:"Real estate",v2:"Restaurant",full:"Full chat ↗",clab:"What your CUSTOMER sees",blab:"What your BUSINESS sees",
+ en:{demolbl:"Live demo",v1:"Real estate",v2:"Restaurant",full:"Full chat ↗",reset:"↺ Reset",clab:"What your CUSTOMER sees",blab:"What your BUSINESS sees",
   bsub:"· back-office · CRM · Calendar · the customer never sees this",hleads:"Qualified leads",hviews:"Viewings / Orders",
   hint:"↻ Updates live. Book a viewing in the chat and watch it appear here.",foot:"One engine · many verticals · real actions on every chat",online:"online",ph:"Type a message",
   k:{leads:"Leads",viewings:"Viewings",orders:"Orders",pipeline:"Pipeline",revenue:"Revenue"},noL:"No leads yet.",noV:"No viewings or orders yet.",book:i=>`Book #${i}`,bmsg:i=>`I want to book listing ${i}`,
@@ -198,6 +199,7 @@ async function refresh(force){try{const d=await (await fetch("/api/dashboard",{c
  prev={leads:k.leads||0,viewings:k.viewings||0,orders:k.orders||0};
 }catch(e){}}
 
+$("reset").onclick=async()=>{try{await fetch("/api/demo-reset");}catch(e){}prev={leads:0,viewings:0,orders:0};refresh();};
 $("send").onclick=()=>send($("input").value);
 $("input").addEventListener("keydown",e=>{if(e.key==="Enter")send($("input").value);});
 $("vseg").addEventListener("click",e=>{const b=e.target.closest("button");if(b)swap(b.dataset.v);});
