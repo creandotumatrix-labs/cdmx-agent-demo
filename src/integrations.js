@@ -144,9 +144,16 @@ export async function diagnose() {
       out.hubspot = r.ok ? "ok" : "invalid(" + r.status + ")";
     } catch { out.hubspot = "error"; }
   } else out.hubspot = "unset";
-  if (calendarReady()) {
-    try { out.calendar = (await getGoogleAccessToken()) ? "ok" : "invalid(token)"; } catch { out.calendar = "error"; }
-  } else out.calendar = "unset";
+  out.calendar = await (async () => {
+    const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+    if (!raw && !(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REFRESH_TOKEN)) return "unset";
+    if (raw) {
+      if (raw.trim() === "REPLACE_ME") return "still_placeholder";
+      let sa; try { sa = JSON.parse(raw); } catch { return "bad_json (paste the key on ONE line, keep the \\n escapes)"; }
+      if (!sa.client_email || !sa.private_key) return "missing_fields (need client_email + private_key)";
+    }
+    try { return (await getGoogleAccessToken()) ? "ok" : "auth_rejected (check Calendar API enabled + key valid)"; } catch { return "error"; }
+  })();
   out.rapidapi = process.env.RAPIDAPI_KEY ? "set" : "unset";
   return out;
 }
