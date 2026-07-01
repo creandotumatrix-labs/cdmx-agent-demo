@@ -127,6 +127,10 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(readFileSync(path.join(__dir, "public", "dashboard.html"), "utf8"));
     }
+    if (req.method === "GET" && (url.pathname === "/demo" || url.pathname === "/split")) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+      return res.end(readFileSync(path.join(__dir, "public", "split.html"), "utf8"));
+    }
     if (req.method === "GET" && url.pathname === "/api/dashboard") {
       const leads = _state.leads, bookings = _state.bookings, orders = _state.completedOrders;
       const pipeline = leads.reduce((s, l) => s + (Number(l.presupuesto) || 0), 0);
