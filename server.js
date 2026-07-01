@@ -119,6 +119,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/register-webhook") {
       return send(res, 200, await registerWhatsAppWebhook());
     }
+    if (req.method === "GET" && url.pathname === "/api/demo-reset") {
+      await store.clearAll(_state);
+      return send(res, 200, { ok: true, cleared: true });
+    }
     if (req.method === "GET" && url.pathname === "/dashboard") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return res.end(readFileSync(path.join(__dir, "public", "dashboard.html"), "utf8"));
