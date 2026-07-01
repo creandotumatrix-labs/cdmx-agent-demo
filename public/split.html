@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CDMX Agent — Demo en vivo (Cliente ↔ Negocio)</title>
+<style>
+  :root{--brand:#0F766E;--wa:#25d366;--bg:#0a100e;--bg2:#0d1512;--panel:#111b17;--line:#1f2c26;--ink:#e8f0ec;--muted:#8fa39a;--acc:#7ee2c1;}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1100px 500px at 78% -10%,rgba(18,184,134,.12),transparent),var(--bg);
+       color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;min-height:100vh}
+  a{color:inherit;text-decoration:none}
+  .bar{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);
+       background:rgba(10,16,14,.75);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800}
+  .logo .d{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--brand),var(--wa));display:grid;place-items:center;font-size:15px}
+  .badge{font-size:11px;font-weight:800;letter-spacing:.4px;padding:4px 9px;border-radius:999px;background:#06351f;color:#5cffa6}
+  .src{font-size:11.5px;color:var(--muted);font-weight:600}
+  .seg{display:flex;background:#0c1512;border:1px solid var(--line);border-radius:999px;padding:3px}
+  .seg button{border:0;background:transparent;color:var(--muted);padding:6px 12px;border-radius:999px;cursor:pointer;font-weight:700;font-size:12.5px}
+  .seg button.on{background:var(--brand);color:#04150f}
+  .bar .sp{flex:1}
+  .glink{color:var(--muted);font-weight:700;font-size:13px}.glink:hover{color:var(--ink)}
+
+  .split{display:grid;grid-template-columns:420px 1fr;gap:22px;padding:22px;align-items:start;max-width:1400px;margin:0 auto}
+  .side .lab{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;letter-spacing:.02em;margin:2px 4px 12px;color:var(--acc)}
+  .side .lab small{color:var(--muted);font-weight:600;font-size:12px}
+
+  /* phone */
+  .phone{width:390px;max-width:100%;height:660px;background:#0b141a;border:9px solid #05100b;border-radius:30px;
+         box-shadow:0 24px 60px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column;margin:0 auto}
+  header.ph{background:var(--brand);color:#fff;padding:11px 13px;display:flex;align-items:center;gap:10px;transition:background .3s}
+  .ph .av{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:17px;font-weight:700}
+  .ph b{font-size:14.5px;display:block;line-height:1.1}.ph span{font-size:11px;opacity:.85}
+  .chat{flex:1;padding:13px;overflow-y:auto;background:#0b141a;background-image:radial-gradient(rgba(255,255,255,.03) 1px,transparent 1px);background-size:17px 17px}
+  .row{display:flex;margin:5px 0}.row.out{justify-content:flex-end}
+  .bub{max-width:80%;padding:8px 11px 7px;border-radius:10px;font-size:14px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word;box-shadow:0 1px 1px rgba(0,0,0,.2)}
+  .in .bub{background:#202c33;border-top-left-radius:2px}.out .bub{background:#005c4b;border-top-right-radius:2px}
+  .bub .t{display:block;font-size:10px;opacity:.55;text-align:right;margin-top:2px}
+  .card{background:#0b141a;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:5px 0;max-width:80%}
+  .card .th{height:120px;position:relative;display:flex;align-items:flex-end}
+  .card .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .card .th .cap{position:relative;z-index:1;padding:6px 10px;color:#fff;font-weight:700;font-size:12.5px;text-shadow:0 1px 4px rgba(0,0,0,.75)}
+  .card .bd{padding:8px 10px;font-size:12.5px;color:#e9edef}.card .bd .pr{color:var(--acc);font-weight:700}
+  .qr{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 7px}
+  .qr button{background:#15302b;color:var(--acc);border:1px solid #2f5b50;border-radius:999px;padding:6px 11px;font-size:12px;cursor:pointer;font-weight:700}
+  .ticket{background:#202c33;border:1px dashed #4a5a62;border-radius:12px;padding:10px;font-size:12.5px;max-width:80%}
+  .ticket h4{margin:0 0 5px;color:var(--acc)}
+  .tw .bub{color:#8696a0}.dots i{display:inline-block;width:6px;height:6px;margin:0 1px;background:#8aa;border-radius:50%;animation:b 1.2s infinite}
+  .dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}@keyframes b{0%,60%,100%{opacity:.3}30%{opacity:1}}
+  .starters{display:flex;gap:6px;flex-wrap:wrap;padding:0 13px 8px}
+  .starters button{background:#202c33;color:#8aa9b8;border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12px;cursor:pointer}
+  .composer{display:flex;gap:8px;padding:9px;background:#0c171d}
+  .composer input{flex:1;border:0;border-radius:999px;padding:10px 14px;font-size:14px;background:#202c33;color:#e9edef;outline:none}
+  .composer .send{border:0;width:44px;border-radius:50%;background:var(--brand);color:#fff;font-size:17px;cursor:pointer}
+
+  /* business */
+  .biz{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;min-height:660px}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  .kpi{background:var(--bg2);border:1px solid var(--line);border-radius:13px;padding:14px}
+  .kpi b{font-size:22px;font-weight:850;display:block}.kpi span{font-size:11.5px;color:var(--muted);font-weight:600}
+  .kpi.flash{animation:flash 1.4s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(37,211,102,.55);border-color:var(--wa)}100%{box-shadow:0 0 0 10px rgba(37,211,102,0);border-color:var(--line)}}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  @media(max-width:1150px){.cols{grid-template-columns:1fr}}
+  .blk h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  .rowc{border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;font-size:13px;background:var(--bg2)}
+  .rowc.new{animation:flash 1.6s ease}
+  .rowc b{color:var(--acc)}
+  .rowc .sub{color:var(--muted);font-size:12px;margin-top:2px}
+  .empty{color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:11px;padding:16px;text-align:center}
+  .hint{color:var(--muted);font-size:12.5px;margin-top:14px;text-align:center}
+
+  footer{border-top:1px solid var(--line);padding:20px;text-align:center;color:var(--muted);font-size:13px}
+  footer a{color:var(--brand);font-weight:700}
+  @media(max-width:900px){.split{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span class="logo"><span class="d">🤖</span> CDMX Agent · <span style="color:var(--muted);font-weight:700" data-i="demolbl">Demo en vivo</span></span>
+    <span class="badge">LIVE</span>
+    <span class="src" id="src"></span>
+    <span class="sp"></span>
+    <div class="seg" id="vseg"><button data-v="real_estate" class="on">🏡 <span data-i="v1">Inmobiliaria</span></button><button data-v="restaurant">🌮 <span data-i="v2">Restaurante</span></button></div>
+    <div class="seg" id="lseg"><span style="display:flex;align-items:center;padding:0 4px 0 8px">🌐</span><button data-l="es" class="on">ES</button><button data-l="en">EN</button></div>
+    <a class="glink" href="/" data-i="full">Chat completo ↗</a>
+  </div>
+
+  <div class="split">
+    <section class="side">
+      <div class="lab">📱 <span data-i="clab">Lo que ve tu CLIENTE</span> <small>· WhatsApp</small></div>
+      <div class="phone">
+        <header class="ph" id="ph"><div class="av" id="av">C</div><div><b id="bname">Casa Nova</b><span id="btag">en línea</span></div></header>
+        <div class="chat" id="chat"></div>
+        <div class="starters" id="starters"></div>
+        <div class="composer"><input id="input" placeholder="Escribe un mensaje" autocomplete="off" /><button class="send" id="send">➤</button></div>
+      </div>
+    </section>
+
+    <section class="side">
+      <div class="lab">🗂️ <span data-i="blab">Lo que ve tu NEGOCIO</span> <small id="bsub">· back-office · CRM · Calendario · el cliente nunca ve esto</small></div>
+      <div class="biz">
+        <div class="kpis" id="kpis"></div>
+        <div class="cols">
+          <div class="blk"><h3 data-i="hleads">Leads calificados</h3><div id="leads"></div></div>
+          <div class="blk"><h3 data-i="hviews">Visitas / Pedidos</h3><div id="views"></div></div>
+        </div>
+        <div class="hint" data-i="hint">↻ Se actualiza en vivo. Agenda una visita en el chat y obsérvala aparecer aquí.</div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <div data-i="foot">Un mismo motor · distintos giros · acciones reales con cada cliente</div>
+    <div style="margin-top:8px">
+      <a href="https://creandotumatrix.com" target="_blank" rel="noopener">CreandoTuMatrix</a> ·
+      <a href="https://adventureonthewave.com" target="_blank" rel="noopener">Adventure On The Wave</a>
+    </div>
+  </footer>
+
+<script>
+const sessionId="s-"+Math.random().toString(36).slice(2);
+let vertical="real_estate",lang="es";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const md=s=>esc(s).replace(/\*(.+?)\*/g,"<b>$1</b>").replace(/\n/g,"<br>");
+const now=()=>new Date().toLocaleTimeString(lang==="en"?"en-US":"es-MX",{hour:"2-digit",minute:"2-digit"});
+const fmt=(n,m)=>"$"+Number(n||0).toLocaleString(m==="USD"?"en-US":"es-MX")+(m?" "+m:"");
+
+const T={
+ es:{demolbl:"Demo en vivo",v1:"Inmobiliaria",v2:"Restaurante",full:"Chat completo ↗",clab:"Lo que ve tu CLIENTE",blab:"Lo que ve tu NEGOCIO",
+  bsub:"· back-office · CRM · Calendario · el cliente nunca ve esto",hleads:"Leads calificados",hviews:"Visitas / Pedidos",
+  hint:"↻ Se actualiza en vivo. Agenda una visita en el chat y obsérvala aparecer aquí.",foot:"Un mismo motor · distintos giros · acciones reales con cada cliente",online:"en línea",ph:"Escribe un mensaje",
+  k:{leads:"Leads",viewings:"Visitas",orders:"Pedidos",pipeline:"Pipeline",revenue:"Ingresos"},noL:"Aún no hay leads.",noV:"Aún no hay visitas ni pedidos.",book:i=>`Agendar la ${i}`,bmsg:i=>`quiero agendar la ${i}`,
+  greet:{real_estate:"¡Hola! 👋 Soy el asistente de Casa Nova. ¿Buscas comprar o rentar, y en qué presupuesto?",restaurant:"¡Qué tal! 🌮 Bienvenido a Taquería El Agave. ¿Te paso el menú o me dices qué se te antoja?"},
+  start:{real_estate:["Busco casa para comprar","3 recámaras, sin límite de precio, muéstrame opciones"],restaurant:["¿Me pasas el menú?","3 tacos de pastor y una horchata"]}},
+ en:{demolbl:"Live demo",v1:"Real estate",v2:"Restaurant",full:"Full chat ↗",clab:"What your CUSTOMER sees",blab:"What your BUSINESS sees",
+  bsub:"· back-office · CRM · Calendar · the customer never sees this",hleads:"Qualified leads",hviews:"Viewings / Orders",
+  hint:"↻ Updates live. Book a viewing in the chat and watch it appear here.",foot:"One engine · many verticals · real actions on every chat",online:"online",ph:"Type a message",
+  k:{leads:"Leads",viewings:"Viewings",orders:"Orders",pipeline:"Pipeline",revenue:"Revenue"},noL:"No leads yet.",noV:"No viewings or orders yet.",book:i=>`Book #${i}`,bmsg:i=>`I want to book listing ${i}`,
+  greet:{real_estate:"Hi! 👋 I'm the Casa Nova assistant. Are you looking to buy or rent, and what's your budget?",restaurant:"Hey! 🌮 Welcome to Taquería El Agave. Menu, or just tell me what you're craving?"},
+  start:{real_estate:["I'm looking to buy a home","3 bedrooms, no budget cap, show me options"],restaurant:["Can I see the menu?","3 pastor tacos and a horchata"]}}
+};
+const t=k=>T[lang][k];
+function applyChrome(){
+ document.documentElement.lang=lang;
+ document.querySelectorAll("[data-i]").forEach(el=>{const k=el.getAttribute("data-i");if(T[lang][k]!=null&&typeof T[lang][k]==="string")el.textContent=T[lang][k];});
+ $("input").placeholder=t("ph");$("bsub").textContent=t("bsub");
+ [...$("lseg").querySelectorAll("button")].forEach(b=>b.classList.toggle("on",(b.dataset.l==="en")===(lang==="en")));
+}
+
+/* ---- chat ---- */
+function bubble(x,side){const r=document.createElement("div");r.className="row "+(side==="out"?"out":"in");r.innerHTML=`<div class="bub">${md(x)}<span class="t">${now()}</span></div>`;$("chat").appendChild(r);sc();}
+function grad(id){const g=["linear-gradient(135deg,#0e3a34,#155e54)","linear-gradient(135deg,#3a2a0e,#6b4f15)","linear-gradient(135deg,#2a0e3a,#4f1560)","linear-gradient(135deg,#0e2a3a,#155060)"];let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return g[h%g.length];}
+function cards(ls){for(const l of ls){const p=fmt(l.precio,l.moneda);const r=document.createElement("div");r.className="row in";
+ r.innerHTML=`<div class="card"><div class="th" style="background:${grad(l.id)}"><img src="${l.foto}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"/><span class="cap">🏡 ${esc(l.colonia)} · ${p}</span></div><div class="bd"><b>${esc(l.colonia)}</b> · ${l.recamaras} rec · ${l.banos} · ${l.m2} m²<br><span class="pr">${p}</span></div></div>`;
+ $("chat").appendChild(r);}
+ const q=document.createElement("div");q.className="row in";const w=document.createElement("div");w.className="qr";w.innerHTML=ls.map((l,i)=>`<button>${t("book")(i+1)}</button>`).join("");[...w.children].forEach((b,i)=>b.onclick=()=>send(t("bmsg")(i+1)));q.appendChild(w);$("chat").appendChild(q);sc();}
+function ticket(tk){const r=document.createElement("div");r.className="row in";const it=tk.items.map(i=>`• ${i.qty} ${esc(i.nombre)} — $${(i.precio*i.qty).toLocaleString("es-MX")}`).join("<br>");
+ r.innerHTML=`<div class="ticket"><h4>🧾 Ticket ${esc(tk.folio)} · cocina</h4>${it}<br><b>Total: $${tk.total.toLocaleString("es-MX")} MXN</b><br><span style="opacity:.7">${esc(tk.tipo||"")}${tk.hora?" · "+esc(tk.hora):""}</span></div>`;$("chat").appendChild(r);sc();}
+function typing(on){let e=$("tw");if(on){if(e)return;e=document.createElement("div");e.id="tw";e.className="row in tw";e.innerHTML='<div class="bub dots"><i></i><i></i><i></i></div>';$("chat").appendChild(e);sc();}else if(e)e.remove();}
+const sc=()=>{const c=$("chat");c.scrollTop=c.scrollHeight;};
+
+async function loadConfig(){const c=await (await fetch("/api/config?v="+vertical)).json();
+ document.documentElement.style.setProperty("--brand",c.brand.color);$("av").textContent=c.brand.initial;$("bname").textContent=c.brand.name;$("btag").textContent=t("online");
+ $("src").textContent=c.source?("· "+(lang==="en"?"Inventory: ":"Inventario: ")+c.source):"";
+ $("chat").innerHTML="";bubble(t("greet")[vertical],"in");
+ $("starters").innerHTML="";t("start")[vertical].forEach(s=>{const b=document.createElement("button");b.textContent=s;b.onclick=()=>send(s);$("starters").appendChild(b);});}
+async function send(text){if(!text.trim())return;$("starters").innerHTML="";bubble(text,"out");$("input").value="";typing(true);
+ try{const d=await (await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId,vertical,text,lang})})).json();typing(false);
+ bubble(d.reply,"in");if(d.listings&&d.listings.length)cards(d.listings);if(d.ticket)ticket(d.ticket);refresh(true);
+ }catch(e){typing(false);bubble("⚠️ error: "+e.message,"in");}}
+async function swap(v){vertical=v;[...$("vseg").querySelectorAll("button")].forEach(b=>b.classList.toggle("on",b.dataset.v===v));await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId})});loadConfig();}
+async function setLang(l){if(l===lang)return;lang=l;applyChrome();await fetch("/api/reset",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId})});loadConfig();render(last);}
+
+/* ---- live business dashboard ---- */
+let last={kpis:{leads:0,viewings:0,orders:0,pipeline:0,revenue:0},leads:[],bookings:[],orders:[]};
+let prev={leads:0,viewings:0,orders:0};
+function kpiCard(key,val,flash){return `<div class="kpi${flash?" flash":""}"><b>${key==="pipeline"||key==="revenue"?"$"+Number(val).toLocaleString("es-MX"):val}</b><span>${t("k")[key]}</span></div>`;}
+function render(d){last=d;const k=d.kpis||{};
+ $("kpis").innerHTML=["leads","viewings","orders","pipeline","revenue"].map(key=>kpiCard(key,k[key]||0,false)).join("");
+ const L=(d.leads||[]).slice().reverse().slice(0,5);
+ $("leads").innerHTML=L.length?L.map(l=>`<div class="rowc"><b>${esc(l.nombre||"—")}</b> · ${esc(l.telefono||"")}<div class="sub">${esc(l.operacion||"")} ${esc(l.colonia||"")} ${l.presupuesto?("· "+fmt(l.presupuesto,l.moneda||"MXN")):""} ${l.recamaras?("· "+l.recamaras+" rec"):""} · ${esc(l.score||"")}</div></div>`).join(""):`<div class="empty">${t("noL")}</div>`;
+ const V=[...(d.bookings||[]).map(b=>({k:"v",...b})),...(d.orders||[]).map(o=>({k:"o",...o}))].reverse().slice(0,6);
+ $("views").innerHTML=V.length?V.map(x=>x.k==="v"
+   ?`<div class="rowc">🗓️ <b>${esc(x.folio)}</b> · ${esc(x.colonia||"")}<div class="sub">${esc(x.fecha||"")} ${esc(x.hora||"")} · ${esc(x.nombre||"")} ${esc(x.telefono||"")}</div></div>`
+   :`<div class="rowc">🧾 <b>${esc(x.folio)}</b> · $${Number(x.total||0).toLocaleString("es-MX")} MXN<div class="sub">${esc(x.tipo||"")} ${x.hora?"· "+esc(x.hora):""}</div></div>`).join(""):`<div class="empty">${t("noV")}</div>`;
+}
+function flashNew(k){const idx={leads:0,viewings:1,orders:2}[k];const el=$("kpis").children[idx];if(el)el.classList.add("flash");}
+async function refresh(force){try{const d=await (await fetch("/api/dashboard",{cache:"no-store"})).json();
+ const k=d.kpis||{};
+ if(k.leads>prev.leads)flashNew("leads");if(k.viewings>prev.viewings)flashNew("viewings");if(k.orders>prev.orders)flashNew("orders");
+ // mark newest rows
+ render(d);
+ if(k.leads>prev.leads&&$("leads").firstChild)$("leads").firstChild.classList.add("new");
+ if((k.viewings>prev.viewings||k.orders>prev.orders)&&$("views").firstChild)$("views").firstChild.classList.add("new");
+ prev={leads:k.leads||0,viewings:k.viewings||0,orders:k.orders||0};
+}catch(e){}}
+
+$("send").onclick=()=>send($("input").value);
+$("input").addEventListener("keydown",e=>{if(e.key==="Enter")send($("input").value);});
+$("vseg").addEventListener("click",e=>{const b=e.target.closest("button");if(b)swap(b.dataset.v);});
+$("lseg").addEventListener("click",e=>{const b=e.target.closest("button");if(b&&b.dataset.l)setLang(b.dataset.l);});
+applyChrome();loadConfig();refresh();setInterval(refresh,3500);
+</script>
+</body>
+</html>
