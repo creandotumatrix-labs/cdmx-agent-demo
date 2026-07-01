@@ -39,7 +39,16 @@ const LANG_DIRECTIVE = {
   es: "\n\nIDIOMA: Responde SIEMPRE en español mexicano, cálido y breve.",
   en: "\n\nLANGUAGE: The customer is writing in English. Reply ONLY in natural, warm, concise English. Translate neighborhoods, amenities and menu items to English, but keep currency codes (MXN/USD), prices and proper names exactly as the tools return them.",
 };
-const withLang = (config, lang) => ({ ...config, systemPrompt: config.systemPrompt + (LANG_DIRECTIVE[lang] || LANG_DIRECTIVE.es) });
+// Give the agent TODAY'S date (Mexico City) every turn, so "mañana", "hoy", "el viernes"
+// resolve to real YYYY-MM-DD dates in the current year — without this the model guesses the
+// year and can book viewings in the past.
+function dateDirective() {
+  const now = new Date();
+  const nice = new Intl.DateTimeFormat("es-MX", { timeZone: "America/Mexico_City", weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now);
+  const iso = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  return `\n\nFECHA ACTUAL: hoy es ${nice} (${iso}, zona horaria America/Mexico_City). Cuando el cliente diga "hoy", "mañana", "el viernes", etc., calcula la fecha real a partir de HOY y pásala a las herramientas en formato YYYY-MM-DD. Nunca uses un año distinto al actual (${iso.slice(0, 4)}).`;
+}
+const withLang = (config, lang) => ({ ...config, systemPrompt: config.systemPrompt + dateDirective() + (LANG_DIRECTIVE[lang] || LANG_DIRECTIVE.es) });
 
 // Mock runs ONLY when explicitly requested (LLM=offline, for dev/CI). In any live
 // mode a model failure fails loudly — it never silently falls back to a mock.
