@@ -12,7 +12,7 @@ import { mockRespond } from "./src/mockAgent.js";
 import { runAgent, LLM } from "./src/llm.js";
 import { _state, dataSource } from "./src/tools.js";
 import * as store from "./src/store.js";
-import { sendWhatsApp } from "./src/integrations.js";
+import { sendWhatsApp, waVerifyToken, integrationsStatus } from "./src/integrations.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -92,7 +92,7 @@ const server = http.createServer(async (req, res) => {
       const mode = url.searchParams.get("hub.mode");
       const token = url.searchParams.get("hub.verify_token");
       const challenge = url.searchParams.get("hub.challenge");
-      if (mode === "subscribe" && token && token === process.env.WEBHOOK_VERIFY_TOKEN) {
+      if (mode === "subscribe" && token && token === waVerifyToken()) {
         res.writeHead(200, { "Content-Type": "text/plain" }); return res.end(challenge || "");
       }
       res.writeHead(403); return res.end("forbidden");
@@ -111,7 +111,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { leads: _state.leads, bookings: _state.bookings });
     }
     if (req.method === "GET" && url.pathname === "/health") {
-      return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource(), store: store.storeMode() });
+      return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource(), store: store.storeMode(), integrations: integrationsStatus() });
     }
     if (req.method === "GET" && url.pathname === "/dashboard") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
