@@ -12,7 +12,7 @@ import { mockRespond } from "./src/mockAgent.js";
 import { runAgent, LLM } from "./src/llm.js";
 import { _state, dataSource } from "./src/tools.js";
 import * as store from "./src/store.js";
-import { sendWhatsApp, waVerifyToken, integrationsStatus } from "./src/integrations.js";
+import { sendWhatsApp, waVerifyToken, integrationsStatus, diagnose } from "./src/integrations.js";
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -112,6 +112,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/health") {
       return send(res, 200, { ok: true, llm: LLM, badge: uiMode, inventory: dataSource(), store: store.storeMode(), integrations: integrationsStatus() });
+    }
+    if (req.method === "GET" && url.pathname === "/api/diag") {
+      return send(res, 200, await diagnose());
     }
     if (req.method === "GET" && url.pathname === "/dashboard") {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
