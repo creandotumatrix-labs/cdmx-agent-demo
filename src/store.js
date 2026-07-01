@@ -26,6 +26,10 @@ export async function init(state) {
       state.leads.push(...L.rows.map((r) => r.data).reverse());
       state.bookings.push(...B.rows.map((r) => r.data).reverse());
       state.completedOrders.push(...O.rows.map((r) => r.data).reverse());
+      // Continue folio/ticket sequences past the hydrated max so numbers never collide across restarts.
+      const maxN = (arr) => arr.reduce((m, x) => { const n = parseInt(String(x.folio || "").replace(/\D/g, ""), 10) || 0; return n > m ? n : m; }, 0);
+      state.folioSeq = Math.max(state.folioSeq, maxN(state.bookings));
+      state.ticketSeq = Math.max(state.ticketSeq, maxN(state.completedOrders));
     }
     MODE = "postgres";
   } catch (e) {
@@ -33,6 +37,15 @@ export async function init(state) {
     pool = null;
   }
   return MODE;
+}
+
+// Wipe all leads/bookings/orders (in-memory + Postgres). Used to clean test data before a demo.
+export async function clearAll(state) {
+  if (state) { state.leads.length = 0; state.bookings.length = 0; state.completedOrders.length = 0; }
+  if (pool) {
+    try { await pool.query("DELETE FROM leads"); await pool.query("DELETE FROM bookings"); await pool.query("DELETE FROM orders"); }
+    catch (e) { console.error("[store] clearAll failed:", e.message); }
+  }
 }
 
 const write = (table, key, id, rec) => {
