@@ -1,11 +1,16 @@
 // Optional external integrations. Every function here is a NO-OP unless its env vars are
 // set, so the app runs free/standalone by default and each integration "lights up" the
 // moment its key is added in Railway. Failures are swallowed — they never break the agent.
+//
+// Env var names are flexible (aliases) so the same variables used by sibling services work
+// as-is: WhatsApp token = WHATSAPP_TOKEN | WHATSAPP_ACCESS_TOKEN; verify token =
+// WEBHOOK_VERIFY_TOKEN | WHATSAPP_VERIFY_TOKEN; Google auth = service account JSON OR OAuth.
+import crypto from "crypto";
 
 const log = (tag, e) => console.error("[integrations:" + tag + "] " + (e && e.message ? e.message : e));
+const env = (...names) => { for (const n of names) if (process.env[n]) return process.env[n]; return undefined; };
 
 // ---------------------------------------------------------------- HubSpot (CRM)
-// Pushes a qualified lead as a HubSpot contact. Needs HUBSPOT_TOKEN (private-app token).
 export async function pushLeadToHubSpot(lead) {
   const token = process.env.HUBSPOT_TOKEN;
   if (!token || !lead) return;
@@ -15,7 +20,6 @@ export async function pushLeadToHubSpot(lead) {
       phone: lead.telefono || "",
       hs_lead_status: "NEW",
       lifecyclestage: "lead",
-      // Deal context packed into a standard text prop so it's visible without custom fields.
       company: [lead.operacion, lead.colonia, lead.recamaras ? lead.recamaras + " rec" : "",
                 lead.presupuesto ? "$" + Number(lead.presupuesto).toLocaleString() : ""]
                 .filter(Boolean).join(" · "),
@@ -25,14 +29,55 @@ export async function pushLeadToHubSpot(lead) {
       headers: { Authorization: "Bearer " + token, "content-type": "application/json" },
       body: JSON.stringify({ properties: props }),
     });
-    if (!r.ok) log("hubspot", "HTTP " + r.status + " " + (await r.text()).slice(0, 120));
-    else console.log("[integrations:hubspot] contact created for", props.firstname);
+    if (!r.ok) log("hubspot", "HTTP " + r.status + " " + (await r.text()).slice(0, 140));
+    else console.log("[integrations:hubspot] contact created:", props.firstname);
   } catch (e) { log("hubspot", e); }
 }
 
-// ---------------------------------------------------------------- Google Calendar
-// Creates a real calendar event for a booked viewing. Needs GOOGLE_CLIENT_ID,
-// GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN (+ optional GOOGLE_CALENDAR_ID).
+// ---------------------------------------------------------------- Google auth (SA JSON or OAuth)
+const b64url = (buf) => Buffer.from(buf).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+
+async function googleTokenFromServiceAccount() {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!raw) return null;
+  let sa; try { sa = JSON.parse(raw); } catch { return log("gcal", "GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON"); }
+  if (!sa.client_email || !sa.private_key) return null;
+  const now = Math.floor(Date.now() / 1000);
+  const header = b64url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const claim = b64url(JSON.stringify({
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/calendar",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now, exp: now + 3600,
+    ...(process.env.GOOGLE_IMPERSONATE ? { sub: process.env.GOOGLE_IMPERSONATE } : {}),
+  }));
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(header + "." + claim); signer.end();
+  const jwt = header + "." + claim + "." + b64url(signer.sign(sa.private_key.replace(/\\n/g, "\n")));
+  const j = await (await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+  })).json();
+  return j.access_token || log("gcal", "SA token: " + JSON.stringify(j).slice(0, 140));
+}
+
+async function googleTokenFromOAuth() {
+  const cid = process.env.GOOGLE_CLIENT_ID, cs = process.env.GOOGLE_CLIENT_SECRET, rt = process.env.GOOGLE_REFRESH_TOKEN;
+  if (!cid || !cs || !rt) return null;
+  const j = await (await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ client_id: cid, client_secret: cs, refresh_token: rt, grant_type: "refresh_token" }),
+  })).json();
+  return j.access_token || null;
+}
+
+async function getGoogleAccessToken() {
+  return (await googleTokenFromServiceAccount()) || (await googleTokenFromOAuth());
+}
+export const calendarReady = () =>
+  !!(process.env.GOOGLE_SERVICE_ACCOUNT_JSON || (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REFRESH_TOKEN));
+
+// ---------------------------------------------------------------- Google Calendar (event)
 function parseWhen(b) {
   const isISO = /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || "");
   const day = isISO ? new Date(b.fecha + "T12:00:00") : new Date(Date.now() + 24 * 3600 * 1000);
@@ -42,15 +87,10 @@ function parseWhen(b) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 export async function createCalendarEvent(booking) {
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN || !booking) return;
+  if (!calendarReady() || !booking) return;
   try {
-    const tk = await (await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, client_secret: GOOGLE_CLIENT_SECRET,
-                                  refresh_token: GOOGLE_REFRESH_TOKEN, grant_type: "refresh_token" }),
-    })).json();
-    if (!tk.access_token) return log("gcal", "no access_token from refresh");
+    const token = await getGoogleAccessToken();
+    if (!token) return;
     const cal = encodeURIComponent(process.env.GOOGLE_CALENDAR_ID || "primary");
     const when = parseWhen(booking);
     const event = {
@@ -61,28 +101,36 @@ export async function createCalendarEvent(booking) {
       end: { dateTime: when.end, timeZone: "America/Mexico_City" },
     };
     const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${cal}/events`, {
-      method: "POST", headers: { Authorization: "Bearer " + tk.access_token, "content-type": "application/json" },
+      method: "POST", headers: { Authorization: "Bearer " + token, "content-type": "application/json" },
       body: JSON.stringify(event),
     });
-    if (!r.ok) log("gcal", "HTTP " + r.status + " " + (await r.text()).slice(0, 120));
+    if (!r.ok) log("gcal", "HTTP " + r.status + " " + (await r.text()).slice(0, 140));
     else console.log("[integrations:gcal] event created:", event.summary);
   } catch (e) { log("gcal", e); }
 }
 
 // ---------------------------------------------------------------- WhatsApp Cloud API (send)
-// Sends a text reply via the Graph API. Needs WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID.
-export function whatsappReady() {
-  return !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
-}
+const waToken = () => env("WHATSAPP_TOKEN", "WHATSAPP_ACCESS_TOKEN");
+export const waVerifyToken = () => env("WEBHOOK_VERIFY_TOKEN", "WHATSAPP_VERIFY_TOKEN");
+export const whatsappReady = () => !!(waToken() && process.env.WHATSAPP_PHONE_NUMBER_ID);
+
 export async function sendWhatsApp(to, bodyText) {
   if (!whatsappReady() || !to || !bodyText) return;
   const v = process.env.WHATSAPP_API_VERSION || "v21.0";
   try {
     const r = await fetch(`https://graph.facebook.com/${v}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
       method: "POST",
-      headers: { Authorization: "Bearer " + process.env.WHATSAPP_TOKEN, "content-type": "application/json" },
+      headers: { Authorization: "Bearer " + waToken(), "content-type": "application/json" },
       body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body: bodyText.slice(0, 4096) } }),
     });
-    if (!r.ok) log("whatsapp", "HTTP " + r.status + " " + (await r.text()).slice(0, 120));
+    if (!r.ok) log("whatsapp", "HTTP " + r.status + " " + (await r.text()).slice(0, 140));
   } catch (e) { log("whatsapp", e); }
 }
+
+// Readiness snapshot for /health (booleans only — never values).
+export const integrationsStatus = () => ({
+  whatsapp: whatsappReady(),
+  hubspot: !!process.env.HUBSPOT_TOKEN,
+  calendar: calendarReady(),
+  rapidapi: !!process.env.RAPIDAPI_KEY,
+});
