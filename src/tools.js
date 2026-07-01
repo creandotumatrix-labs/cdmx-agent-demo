@@ -95,20 +95,21 @@ if (INV === "live") {
 export function search_listings(args = {}) {
   const { colonia, max_precio, min_precio, recamaras } = args;
   const zonas = [].concat(colonia || []).map(norm).filter(Boolean);
-  const byPriceBeds = (l) =>
-    (!max_precio || l.precio <= Number(max_precio)) &&
-    (!min_precio || l.precio >= Number(min_precio)) &&
-    (!recamaras || l.recamaras >= Number(recamaras));
-  let r = LISTINGS.filter((l) => byPriceBeds(l) && (!zonas.length || zonas.some((z) => norm(l.colonia).includes(z) || z.includes(norm(l.colonia)))));
-  // If a named zone wiped out results, keep the price/bed matches (zone is a nice-to-have).
-  if (!r.length && zonas.length) r = LISTINGS.filter(byPriceBeds);
-  // If a strict bedroom count left us thin, fall back to price-only so the agent still
-  // surfaces 2–3 real options (preferring the most bedrooms, then the lowest price).
-  if (r.length < 2 && recamaras) {
-    const priceOnly = (l) => (!max_precio || l.precio <= Number(max_precio)) && (!min_precio || l.precio >= Number(min_precio));
-    const more = LISTINGS.filter(priceOnly).sort((a, b) => (b.recamaras - a.recamaras) || (a.precio - b.precio)).slice(0, 3);
-    if (more.length > r.length) r = more;
-  }
+  const inPrice = (l) => (!max_precio || l.precio <= Number(max_precio)) && (!min_precio || l.precio >= Number(min_precio));
+  const inBeds = (l) => !recamaras || l.recamaras >= Number(recamaras);
+  const inZone = (l) => !zonas.length || zonas.some((z) => norm(l.colonia).includes(z) || z.includes(norm(l.colonia)));
+  // Always give the customer a real CHOICE (2–3 options). Relax the least-important
+  // constraint first — zone, then bedrooms, then price — until at least 2 real listings
+  // qualify. Prevents a narrow filter (one exact-zone match, a tight budget) from surfacing
+  // a single card when the live inventory clearly has more to show.
+  const tiers = [
+    (l) => inPrice(l) && inBeds(l) && inZone(l), // exact match
+    (l) => inPrice(l) && inBeds(l),              // drop the zone
+    (l) => inPrice(l),                           // drop the bedroom minimum
+    () => true,                                  // last resort: any real listing
+  ];
+  let r = [];
+  for (const pass of tiers) { r = LISTINGS.filter(pass); if (r.length >= 2) break; }
   r = r.sort((a, b) => a.precio - b.precio).slice(0, 3);
   return { count: r.length, listings: r, source: SOURCE };
 }
@@ -202,6 +203,16 @@ export function create_order(args = {}, sessionId = "default") {
     store.saveLead(lead);
     integrations.pushLeadToHubSpot(lead);
   }
+  // Put the order on the owner's calendar too (pickup / delivery / table time) so every
+  // customer commitment — restaurant or real-estate — lands in Google Calendar, not just HubSpot.
+  integrations.createCalendarEvent({
+    folio, fecha: new Date().toISOString().slice(0, 10), hora: ticket.hora,
+    nombre: ticket.nombre, telefono: ticket.telefono,
+    summary: `🌮 Pedido ${folio} — ${ticket.tipo}`,
+    description: `Pedido ${folio} · ${ticket.tipo}${ticket.direccion ? " · " + ticket.direccion : ""}\n` +
+      `Cliente: ${ticket.nombre || "—"} · Tel: ${ticket.telefono || "—"}\n` +
+      ticket.items.map((i) => `${i.qty}× ${i.nombre}`).join(", ") + ` · Total $${ticket.total}`,
+  });
   return { ok: true, ...ticket };
 }
 

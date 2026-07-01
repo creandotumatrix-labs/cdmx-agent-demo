@@ -94,9 +94,9 @@ export async function createCalendarEvent(booking) {
     const cal = encodeURIComponent(process.env.GOOGLE_CALENDAR_ID || "primary");
     const when = parseWhen(booking);
     const event = {
-      summary: `Visita: ${booking.colonia || "propiedad"} (${booking.folio || ""})`,
-      description: `Lead: ${booking.nombre || "—"} · Tel: ${booking.telefono || "—"}\n` +
-                   `Solicitado: ${booking.fecha || ""} ${booking.hora || ""} · Propiedad ${booking.listing_id || booking.colonia || ""}`,
+      summary: booking.summary || `Visita: ${booking.colonia || "propiedad"} (${booking.folio || ""})`,
+      description: booking.description || (`Lead: ${booking.nombre || "—"} · Tel: ${booking.telefono || "—"}\n` +
+                   `Solicitado: ${booking.fecha || ""} ${booking.hora || ""} · Propiedad ${booking.listing_id || booking.colonia || ""}`),
       start: { dateTime: when.start, timeZone: "America/Mexico_City" },
       end: { dateTime: when.end, timeZone: "America/Mexico_City" },
     };
@@ -104,9 +104,10 @@ export async function createCalendarEvent(booking) {
       method: "POST", headers: { Authorization: "Bearer " + token, "content-type": "application/json" },
       body: JSON.stringify(event),
     });
-    if (!r.ok) log("gcal", "HTTP " + r.status + " " + (await r.text()).slice(0, 140));
-    else console.log("[integrations:gcal] event created:", event.summary);
-  } catch (e) { log("gcal", e); }
+    if (!r.ok) { const t = (await r.text()).slice(0, 160); log("gcal", "HTTP " + r.status + " " + t); return { ok: false, status: r.status, error: t }; }
+    console.log("[integrations:gcal] event created:", event.summary);
+    return { ok: true };
+  } catch (e) { log("gcal", e); return { ok: false, error: e.message }; }
 }
 
 // ---------------------------------------------------------------- WhatsApp Cloud API (send)
@@ -171,13 +172,29 @@ export async function diagnose() {
   } else out.hubspot = "unset";
   out.calendar = await (async () => {
     const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-    if (!raw && !(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REFRESH_TOKEN)) return "unset";
+    const oauth = process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_REFRESH_TOKEN;
+    if (!raw && !oauth) return "unset";
+    let saEmail = null;
     if (raw) {
       if (raw.trim() === "REPLACE_ME") return "still_placeholder";
       let sa; try { sa = JSON.parse(raw); } catch { return "bad_json (paste the key on ONE line, keep the \\n escapes)"; }
       if (!sa.client_email || !sa.private_key) return "missing_fields (need client_email + private_key)";
+      saEmail = sa.client_email;  // identifier, not a secret — the address to share your calendar with
     }
-    try { return (await getGoogleAccessToken()) ? "ok" : "auth_rejected (check Calendar API enabled + key valid)"; } catch { return "error"; }
+    let token; try { token = await getGoogleAccessToken(); } catch { return "error"; }
+    if (!token) return "auth_rejected (check Calendar API enabled + key valid)";
+    const calId = process.env.GOOGLE_CALENDAR_ID;
+    // A service account with no target calendar writes to its OWN private calendar — the
+    // owner never sees those events (auth succeeds, but nothing shows up). Spell out the fix.
+    if (!calId) return saEmail
+      ? `auth_ok · but GOOGLE_CALENDAR_ID is unset → events save to the service account's private calendar, NOT yours. Fix: set GOOGLE_CALENDAR_ID=sgrn2000@gmail.com, then in Google Calendar share that calendar with ${saEmail} as "Make changes to events".`
+      : "auth_ok · set GOOGLE_CALENDAR_ID to your calendar address";
+    try {
+      const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?maxResults=1`, { headers: { Authorization: "Bearer " + token } });
+      if (r.ok) return `ok · writing to ${calId}`;
+      if (r.status === 403 || r.status === 404) return `no_access(${r.status}) → share ${calId} with ${saEmail || "the service account"} as "Make changes to events"`;
+      return `error(${r.status})`;
+    } catch { return "probe_error"; }
   })();
   out.rapidapi = process.env.RAPIDAPI_KEY ? "set" : "unset";
   return out;
