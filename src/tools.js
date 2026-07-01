@@ -190,6 +190,18 @@ export function create_order(args = {}, sessionId = "default") {
   const record = { ...ticket, at: Date.now() };
   state.completedOrders.push(record);
   store.saveOrder(record);
+  // Every order is also a customer lead — capture the contact (name/phone/address) for the CRM.
+  if (ticket.nombre || ticket.telefono) {
+    const lead = {
+      id: "LEAD-" + (state.leads.length + 1),
+      nombre: ticket.nombre || null, telefono: ticket.telefono || null,
+      operacion: "pedido", colonia: ticket.direccion || ticket.tipo || null,
+      presupuesto: null, recamaras: null, listing_id: null, score: "cliente",
+    };
+    state.leads.push(lead);
+    store.saveLead(lead);
+    integrations.pushLeadToHubSpot(lead);
+  }
   return { ok: true, ...ticket };
 }
 
