@@ -10,7 +10,31 @@ import * as integrations from "./integrations.js";
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const load = (f) => JSON.parse(readFileSync(path.join(__dir, "..", "data", f), "utf8"));
 
-const MENU = load("menu.json");
+let MENU = load("menu.json");
+let MENU_SOURCE = "menú local (respaldo)";
+export const menuSource = () => MENU_SOURCE;
+
+// Restaurant menu sourced LIVE from a real food API (TheMealDB), mapped to menu items.
+// Prices are representative MXN until a real POS (Square/Toast) is connected. Falls back
+// to the committed menu.json when offline/blocked. Parallel to the SimplyRETS listing feed.
+async function loadMenuLive() {
+  if ((process.env.MENU || "live").toLowerCase() !== "live") return;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 4000);
+  try {
+    const r = await fetch("https://www.themealdb.com/api/json/v1/1/filter.php?c=Mexican", { signal: ctrl.signal });
+    if (!r.ok) throw new Error("themealdb " + r.status);
+    const meals = ((await r.json()) || {}).meals || [];
+    const mapped = meals.map((m) => {
+      const id = String(m.idMeal);
+      const precio = 55 + (parseInt(id.slice(-2), 10) % 9) * 15; // representative MXN 55–175
+      return { id: "M" + id, nombre: m.strMeal, categoria: "Platillo", precio, disponible: true, foto: m.strMealThumb };
+    });
+    if (mapped.length) { MENU = mapped; MENU_SOURCE = "TheMealDB API (en vivo)"; }
+  } catch { /* offline / blocked → keep the committed menu */ }
+  finally { clearTimeout(timer); }
+}
+await loadMenuLive();
 
 // In-memory state (per process). Keyed by sessionId where relevant.
 const state = { bookings: [], leads: [], orders: {}, completedOrders: [], ticketSeq: 240, folioSeq: 5000 };
@@ -127,7 +151,7 @@ export function create_lead(args = {}) {
 export function get_menu(args = {}) {
   let m = MENU.filter((i) => i.disponible);
   if (args.categoria) m = m.filter((i) => norm(i.categoria).includes(norm(args.categoria)));
-  return { items: m };
+  return { items: m, source: MENU_SOURCE };
 }
 
 function findItem(idOrName) {
