@@ -40,7 +40,7 @@ await loadMenuLive();
 const state = { bookings: [], leads: [], orders: {}, completedOrders: [], ticketSeq: 240, folioSeq: 5000 };
 
 export const money = (n, moneda = "MXN") => "$" + Number(n).toLocaleString(moneda === "USD" ? "en-US" : "es-MX") + " " + moneda;
-const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 // ---------- Real-estate inventory: SimplyRETS live, committed snapshot fallback ----------
 let LISTINGS = load("listings.json"); // curated CDMX inventory (default demo set)
@@ -93,25 +93,32 @@ if (INV === "live") {
 }
 
 export function search_listings(args = {}) {
-  const { colonia, max_precio, min_precio, recamaras } = args;
+  const { op, colonia, max_precio, min_precio, recamaras } = args;
   const zonas = [].concat(colonia || []).map(norm).filter(Boolean);
   const inPrice = (l) => (!max_precio || l.precio <= Number(max_precio)) && (!min_precio || l.precio >= Number(min_precio));
   const inBeds = (l) => !recamaras || l.recamaras >= Number(recamaras);
   const inZone = (l) => !zonas.length || zonas.some((z) => norm(l.colonia).includes(z) || z.includes(norm(l.colonia)));
+  // `op` (renta vs venta) is a HARD filter and is NEVER relaxed: a property for sale is not a
+  // substitute for a rental. If the inventory has nothing for the requested operation we say so
+  // (no_inventory_for_op) instead of quietly answering with listings of the other operation.
+  const pool = op ? LISTINGS.filter((l) => norm(l.op) === norm(op)) : LISTINGS;
+  if (op && !pool.length) return { count: 0, listings: [], source: SOURCE, op, relaxed: [], exact_match: false, no_inventory_for_op: true };
   // Always give the customer a real CHOICE (2–3 options). Relax the least-important
   // constraint first — zone, then bedrooms, then price — until at least 2 real listings
   // qualify. Prevents a narrow filter (one exact-zone match, a tight budget) from surfacing
-  // a single card when the live inventory clearly has more to show.
+  // a single card when the live inventory clearly has more to show. Whatever gets dropped is
+  // reported in `relaxed` so the caller never presents a relaxed result as an exact match.
+  const asked = { colonia: zonas.length > 0, recamaras: !!recamaras, precio: !!(max_precio || min_precio) };
   const tiers = [
-    (l) => inPrice(l) && inBeds(l) && inZone(l), // exact match
-    (l) => inPrice(l) && inBeds(l),              // drop the zone
-    (l) => inPrice(l),                           // drop the bedroom minimum
-    () => true,                                  // last resort: any real listing
+    { drop: [], pass: (l) => inPrice(l) && inBeds(l) && inZone(l) },        // exact match
+    { drop: ["colonia"], pass: (l) => inPrice(l) && inBeds(l) },            // drop the zone
+    { drop: ["colonia", "recamaras"], pass: (l) => inPrice(l) },            // drop the bedroom minimum
+    { drop: ["colonia", "recamaras", "precio"], pass: () => true },         // last resort: any real listing
   ];
-  let r = [];
-  for (const pass of tiers) { r = LISTINGS.filter(pass); if (r.length >= 2) break; }
+  let r = [], relaxed = [];
+  for (const tier of tiers) { r = pool.filter(tier.pass); relaxed = tier.drop.filter((k) => asked[k]); if (r.length >= 2) break; }
   r = r.sort((a, b) => a.precio - b.precio).slice(0, 3);
-  return { count: r.length, listings: r, source: SOURCE };
+  return { count: r.length, listings: r, source: SOURCE, op: op || null, relaxed, exact_match: relaxed.length === 0 };
 }
 
 export function get_listing(args = {}) {
@@ -218,8 +225,13 @@ export function create_order(args = {}, sessionId = "default") {
 
 export const TOOLS = {
   search_listings: {
-    description: "Busca propiedades en el inventario en vivo (MLS vía SimplyRETS). Devuelve SOLO inmuebles reales que cumplen los filtros de precio, recámaras y zona.",
-    parameters: { op: "renta|venta (informativo)", colonia: "ciudad/zona opcional", max_precio: "number opcional (USD)", min_precio: "number opcional", recamaras: "number opcional (mínimo)" },
+    description:
+      "Busca propiedades en el inventario en vivo (MLS vía SimplyRETS). Devuelve SOLO inmuebles reales. " +
+      "`op` (renta|venta) es un filtro DURO que NUNCA se relaja: jamás se devuelven propiedades de la otra operación. " +
+      "Si no hay inventario para esa operación devuelve no_inventory_for_op:true — díselo al cliente y NO ofrezcas propiedades de la otra operación. " +
+      "Zona, recámaras y precio SÍ se relajan para poder mostrar opciones: `relaxed` lista los filtros que se ignoraron y `exact_match` es true solo si no se relajó ninguno. " +
+      "Si `relaxed` NO está vacío, NO afirmes que los resultados cumplen lo que pidió el cliente: aclara qué se amplió y presenta las propiedades como lo más cercano.",
+    parameters: { op: "renta|venta — filtro DURO, nunca se relaja", colonia: "ciudad/zona opcional (se puede relajar)", max_precio: "number opcional, moneda del inventario (se puede relajar)", min_precio: "number opcional (se puede relajar)", recamaras: "number opcional (mínimo, se puede relajar)" },
     handler: (a) => search_listings(a),
   },
   get_listing: { description: "Devuelve el detalle de una propiedad por id.", parameters: { listing_id: "string" }, handler: (a) => get_listing(a) },
