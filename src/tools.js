@@ -40,7 +40,7 @@ await loadMenuLive();
 const state = { bookings: [], leads: [], orders: {}, completedOrders: [], ticketSeq: 240, folioSeq: 5000 };
 
 export const money = (n, moneda = "MXN") => "$" + Number(n).toLocaleString(moneda === "USD" ? "en-US" : "es-MX") + " " + moneda;
-const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const norm = (s) => (s || "").toString().toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g, "");
 
 // ---------- Real-estate inventory: SimplyRETS live, committed snapshot fallback ----------
 let LISTINGS = load("listings.json"); // curated CDMX inventory (default demo set)
@@ -63,7 +63,7 @@ function mapProp(p) {
     estacionamientos: pr.garageSpaces || 0,
     amenidades: [pr.subType, pr.style, pr.type].filter(Boolean),
     foto: (p.photos && p.photos[0]) || "https://picsum.photos/seed/" + (p.mlsId || "x") + "/640/420",
-    descripcion: ((p.remarks || "") + "").replace(/\s+/g, " ").slice(0, 140) || a.full || "Propiedad disponible",
+    descripcion: ((p.remarks || "") + "").replace(/\\s+/g, " ").slice(0, 140) || a.full || "Propiedad disponible",
   };
 }
 
@@ -216,8 +216,8 @@ export function create_order(args = {}, sessionId = "default") {
     folio, fecha: new Date().toISOString().slice(0, 10), hora: ticket.hora,
     nombre: ticket.nombre, telefono: ticket.telefono,
     summary: `🌮 Pedido ${folio} — ${ticket.tipo}`,
-    description: `Pedido ${folio} · ${ticket.tipo}${ticket.direccion ? " · " + ticket.direccion : ""}\n` +
-      `Cliente: ${ticket.nombre || "—"} · Tel: ${ticket.telefono || "—"}\n` +
+    description: `Pedido ${folio} · ${ticket.tipo}${ticket.direccion ? " · " + ticket.direccion : ""}\\n` +
+      `Cliente: ${ticket.nombre || "—"} · Tel: ${ticket.telefono || "—"}\\n` +
       ticket.items.map((i) => `${i.qty}× ${i.nombre}`).join(", ") + ` · Total $${ticket.total}`,
   });
   return { ok: true, ...ticket };
