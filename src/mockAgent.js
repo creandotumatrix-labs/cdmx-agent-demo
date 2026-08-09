@@ -3,7 +3,7 @@
 // automated verification. The live agent (Claude via Max) is the real thing.
 import * as T from "./tools.js";
 
-const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 const COLONIAS = ["roma norte", "roma", "condesa", "polanco", "del valle", "napoles", "narvarte", "coyoacan"];
 
 function parseMoney(t) {
@@ -26,7 +26,7 @@ function parseColonia(t) {
   return null;
 }
 function fmtListing(l) {
-  return `*${l.colonia}* · ${l.recamaras} rec · ${l.m2}m² · ${T.money(l.precio)}/${l.op === "renta" ? "mes" : ""}\n_${l.id}_`;
+  return `*${l.colonia}* · ${l.recamaras} rec · ${l.m2}m² · ${T.money(l.precio)}${l.op === "renta" ? "/mes" : ""}\n_${l.id}_`;
 }
 
 // ---- Real estate state machine ----
@@ -35,7 +35,10 @@ function realEstate(session, text) {
   const actions = [];
   const n = norm(text);
 
-  if (!s.op) {
+  // Re-read the operation while we still have nothing to show: if we just told the customer
+  // there is no inventory for what they asked (sinInventario, below) and they switch, honour
+  // the switch instead of repeating the same message forever.
+  if (!s.op || s.sinInventario) {
     if (/(rent|renta)/.test(n)) s.op = "renta";
     else if (/(compr|venta|comprar)/.test(n)) s.op = "venta";
   }
@@ -72,13 +75,27 @@ function realEstate(session, text) {
   if (!s.shown.length) {
     const res = T.search_listings({ op: s.op, colonia: s.colonia, max_precio: s.op === "renta" ? s.presupuesto : null, recamaras: s.recamaras });
     actions.push({ tool: "search_listings", args: { op: s.op, colonia: s.colonia, max_precio: s.presupuesto, recamaras: s.recamaras }, result: res });
+    // Nothing at all for the requested operation — say it plainly. NEVER fall back to listings
+    // of the other operation: a property for sale is not a substitute for a rental.
+    if (res.no_inventory_for_op) {
+      s.sinInventario = true;
+      return { reply: s.op === "renta"
+        ? "Te soy honesto: por ahora solo tengo propiedades en *venta* en el catálogo 😕 ¿Te muestro opciones de venta o prefieres que un asesor te contacte para renta?"
+        : "Te soy honesto: por ahora solo tengo propiedades en *renta* en el catálogo 😕 ¿Te muestro opciones de renta o prefieres que un asesor te contacte para venta?", actions };
+    }
     if (!res.count) {
       s.colonia = null;
       return { reply: "Mmm, no encontré algo exacto con esos filtros 😕 ¿Te muestro lo más cercano en otra colonia o ajustamos el presupuesto?", actions };
     }
+    s.sinInventario = false;
     s.shown = res.listings.map((l) => l.id);
     const cards = res.listings.map((l, i) => `${i + 1}) ${fmtListing(l)}`).join("\n\n");
-    return { reply: `Tengo ${res.count} que encajan 👇\n\n${cards}\n\n¿Quieres agendar una visita a alguna?`, actions, listings: res.listings };
+    // Only say they "encajan" when NOTHING was relaxed. Otherwise be upfront that these are
+    // the closest we have, not what the customer actually asked for.
+    const intro = res.exact_match
+      ? `Tengo ${res.count} que encajan 👇`
+      : "No encontré exactamente lo que pediste, pero te muestro lo más cercano 👇";
+    return { reply: `${intro}\n\n${cards}\n\n¿Quieres agendar una visita a alguna?`, actions, listings: res.listings };
   }
 
   if (s.pick && (!s.fecha || !s.hora)) {
