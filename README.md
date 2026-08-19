@@ -6,6 +6,16 @@ The agent is driven by a real model two ways: **your Max plan** (via the `claude
 
 ---
 
+## Demo
+
+![Demo en vivo — CDMX Agent](cdmx-agent-demo.gif)
+
+- 🔴 **Demo en vivo:** [cdmx-agent-demo-production.up.railway.app/demo](https://cdmx-agent-demo-production.up.railway.app/demo)
+- 📄 **Detalles:** [cdmx-agent-explainer.vercel.app](https://cdmx-agent-explainer.vercel.app/)
+- ▶️ **Video:** [youtu.be/Idg40dF3FZE](https://youtu.be/Idg40dF3FZE)
+
+---
+
 ## Run on your Max plan (default, no per-token cost)
 ```bash
 cd cdmx-agent-demo
